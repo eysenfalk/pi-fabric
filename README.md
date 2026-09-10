@@ -139,6 +139,10 @@ See the [interface & commands reference](docs/interface.md) for every view, keyb
 
 ## Reference
 
+- [Product vision](docs/product/vision.md): durable product intent, explicitly not delivery authority.
+- [Directional roadmap](docs/product/roadmap.md): NOW/NEXT/LATER orientation without implementation commitments.
+- [Idea documents](docs/ideas/README.md): detailed future thinking retained outside normative implementation scope.
+- [Architecture decisions](docs/decisions/001-delivery-authority-and-information-hierarchy.md): accepted decisions, beginning with delivery authority and information hierarchy.
 - [Configuration](docs/configuration.md): `fabric.json`, code modes, tool capture, approvals, and budgets.
 - [Execution kernels](docs/kernels.md): exclusive TypeScript/Python selection, Monty sandboxing, CPython escape hatch, agent inheritance, and examples.
 - [Reusable programs](docs/programs.md): named stored orchestration, manifests, parameter defaults, trust boundaries, and invocation.
