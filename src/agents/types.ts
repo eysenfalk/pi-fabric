@@ -54,6 +54,8 @@ export interface AgentRunRequest {
   persona?: string;
   thinking?: FabricThinking;
   tools?: string[];
+  /** Host-discovered Skills that must be active for only this invocation. */
+  skills?: string[];
   timeoutMs?: number;
   extensions?: boolean;
   recursive?: boolean;
@@ -202,6 +204,8 @@ export interface AgentWorkerOptions {
   fabricSessionId?: string;
   extensions: boolean;
   tools: string[];
+  /** Resolved host Skill files in caller-specified composition order. */
+  skillPaths?: string[];
   grantedRisks: string[];
   maxTokens?: number;
   fabricExtensionPath?: string;

@@ -86,16 +86,18 @@ describe("physical kernel skill trees", () => {
     const { default: piFabric } = await import("../src/index.js");
     await piFabric(pi);
     const ready = vi.spyOn(FabricState.prototype, "bootstrapped", "get").mockReturnValue(true);
+    const setHostSkills = vi.spyOn(FabricState.prototype, "setHostSkills");
     const config = vi.spyOn(FabricState.prototype, "config", "get").mockReturnValue(normalizeFabricConfig({ executor: { kernel } }));
     try {
       const discovery = await handlers.get("resources_discover")![0]!({}, {});
       expect(discovery).toEqual({ skillPaths: [path.join(root, kernel)] });
       const event = { systemPrompt: "Base", prompt: "inspect", systemPromptOptions: { skills: bundled(kernel).skills } };
       const prompt = await handlers.get("before_agent_start")![0]!(event, {});
+      expect(setHostSkills).toHaveBeenCalledWith(event.systemPromptOptions.skills);
       expect(prompt.systemPrompt).toContain(path.join(root, kernel, "fabric-exec", "SKILL.md"));
       expect((await handlers.get("before_agent_start")![0]!(event, {})).systemPrompt).toBe(prompt.systemPrompt);
       expect(prompt.systemPrompt).not.toContain("fabric-exec-python");
-    } finally { ready.mockRestore(); config.mockRestore(); }
+    } finally { ready.mockRestore(); setHostSkills.mockRestore(); config.mockRestore(); }
   });
 
   it("preserves the native/full-code loader distinction and neutral third-party skills", () => {

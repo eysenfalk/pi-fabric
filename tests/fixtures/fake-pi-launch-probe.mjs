@@ -14,6 +14,7 @@ const flag = (name) => {
   const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : undefined;
 };
+const flags = (name) => argv.flatMap((arg, index) => arg === name ? [argv[index + 1]] : []).filter(Boolean);
 const surface = {
   cwd: process.cwd(),
   trustFlags: argv.filter((arg) => ["--approve", "--no-approve", "-a", "-na"].includes(arg)),
@@ -27,6 +28,8 @@ const surface = {
   extensions: !argv.includes("--no-extensions"),
   extensionPath: flag("-e"),
   tools: flag("--tools")?.split(",") ?? [],
+  noSkills: argv.includes("--no-skills"),
+  skillPaths: flags("--skill"),
   fullCodeModeEnv: process.env.PI_FABRIC_FULL_CODE_MODE,
   toolAllowlistEnv: process.env.PI_FABRIC_TOOL_ALLOWLIST
     ? JSON.parse(process.env.PI_FABRIC_TOOL_ALLOWLIST)

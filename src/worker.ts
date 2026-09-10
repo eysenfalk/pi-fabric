@@ -275,6 +275,10 @@ const main = async (): Promise<void> => {
   if (options.sessionFile) piArguments.push("--session", options.sessionFile);
   else piArguments.push("--no-session");
   if (!options.extensions) piArguments.push("--no-extensions");
+  if (options.skillPaths) {
+    piArguments.push("--no-skills");
+    for (const skillPath of options.skillPaths) piArguments.push("--skill", skillPath);
+  }
   if (options.fabricExtensionPath) piArguments.push("-e", options.fabricExtensionPath);
   if (options.tools.length > 0) piArguments.push("--tools", options.tools.join(","));
   else piArguments.push("--no-tools"); // explicit empty allowlist => no tools, not Pi defaults

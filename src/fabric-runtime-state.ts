@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext, Skill } from "@earendil-works/pi-coding-agent";
 import { resolveAgentDir } from "./core/agent-dir.js";
 import {
   resolveAvailablePiModel,
@@ -139,6 +139,7 @@ export interface FabricRuntimeStateOptions {
   prewalk?: PrewalkController;
   prewalkDrift?: PrewalkDriftTracker;
   sessionApprovals?: FabricSessionApprovals;
+  hostSkills?: () => readonly Skill[];
   paths?: FabricRuntimePaths;
 }
 
@@ -176,6 +177,7 @@ export class FabricRuntimeState {
   readonly prewalkDrift: PrewalkDriftTracker;
   readonly sessionApprovals: FabricSessionApprovals;
   readonly #paths: FabricRuntimePaths | undefined;
+  readonly #hostSkills: (() => readonly Skill[]) | undefined;
   readonly #managedHost: FabricManagedHost | undefined;
   #widgetDismissedAt = 0;
   #suppressResidentGuidanceSync = false;
@@ -190,6 +192,7 @@ export class FabricRuntimeState {
     this.prewalkDrift = options.prewalkDrift ?? new PrewalkDriftTracker();
     this.sessionApprovals = options.sessionApprovals ?? new FabricSessionApprovals();
     this.#paths = options.paths;
+    this.#hostSkills = options.hostSkills;
     this.#managedHost = options.managedHost;
   }
 
@@ -535,6 +538,7 @@ export class FabricRuntimeState {
             fabricExtensionPath: this.#paths.extension,
           }
         : {}),
+      ...(this.#hostSkills ? { hostSkills: this.#hostSkills } : {}),
       resolveParticipantGuidance: ({ model, runner }) => {
         const targetModel = model ?? (runner === "pi" && context.model
           ? `${context.model.provider}/${context.model.id}`

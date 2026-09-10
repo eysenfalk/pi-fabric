@@ -38,6 +38,11 @@ const runProperties = {
     enum: ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
   },
   tools: { type: "array", items: { type: "string" } },
+  skills: {
+    type: "array",
+    items: { type: "string", minLength: 1 },
+    description: "Exact host-discovered Skill names to activate for this invocation, in composition order. Omit to preserve ordinary Skill discovery.",
+  },
   timeoutMs: {
     type: "number",
     description:
@@ -129,6 +134,7 @@ const handoffSchema = {
     },
     thinking: runProperties.thinking,
     tools: runProperties.tools,
+    skills: runProperties.skills,
     timeoutMs: runProperties.timeoutMs,
     extensions: runProperties.extensions,
     recursive: runProperties.recursive,

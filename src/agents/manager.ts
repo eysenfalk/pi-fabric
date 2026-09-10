@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Skill } from "@earendil-works/pi-coding-agent";
 import type { FabricKernel } from "../runtime/kernel.js";
 import fs from "node:fs";
 import os from "node:os";
@@ -48,6 +49,7 @@ import type {
   AgentTransportLaunch,
 } from "./types.js";
 import { WorktreeManager } from "./worktree-manager.js";
+import { resolveSkillBinding } from "../core/skill-binding.js";
 import { writeHandoffSession } from "./handoff.js";
 import {
   activeBudgetState,
@@ -384,6 +386,7 @@ export class AgentManager {
     | ((model: string | undefined) => Promise<string | void>)
     | undefined;
   readonly #resolveParticipantGuidance: AgentParticipantGuidanceResolver | undefined;
+  readonly #hostSkills: (() => readonly Skill[]) | undefined;
   readonly #piModelPreparations = new Map<string, Promise<string | undefined>>();
   readonly #budget: BudgetLedgerState | undefined;
   readonly #budgetOwned: boolean;
@@ -422,6 +425,7 @@ export class AgentManager {
       onLifecycle?: (event: FabricLifecyclePublishRequest) => void;
       preparePiModel?: (model: string | undefined) => Promise<string | void>;
       resolveParticipantGuidance?: AgentParticipantGuidanceResolver;
+      hostSkills?: () => readonly Skill[];
     } = {},
   ) {
     this.#semaphore = new AgentAdmission(config.maxConcurrent, Infinity, config.maxDepth);
@@ -442,6 +446,7 @@ export class AgentManager {
     this.#onLifecycle = options.onLifecycle;
     this.#preparePiModel = options.preparePiModel;
     this.#resolveParticipantGuidance = options.resolveParticipantGuidance;
+    this.#hostSkills = options.hostSkills;
     this.#currentDepth = Math.max(0, Number(process.env.PI_FABRIC_DEPTH ?? "0") || 0);
     this.#fullCodeMode = options.fullCodeMode ?? true;
     this.#kernel = options.kernel ?? (() => "typescript");
@@ -580,6 +585,12 @@ export class AgentManager {
         "Veda runner does not support recursive Fabric. Use a Pi runner for recursive: true — Veda executes one headless prompt per invocation.",
       );
     }
+    if (request.skills !== undefined && runner !== "pi") {
+      throw new Error(`Required Skills are only supported by the Pi runner, not ${runner}`);
+    }
+    const skillBinding = request.skills === undefined
+      ? undefined
+      : resolveSkillBinding(request.skills, this.#hostSkills?.() ?? [], request.task);
     if (request.sessionSeed && runner !== "pi") {
       throw new Error("Trajectory handoff sessions are only supported by the Pi runner");
     }
@@ -628,7 +639,7 @@ export class AgentManager {
     const imagesFile = request.images && request.images.length > 0
       ? path.join(runDirectory, "images.json")
       : undefined;
-    fs.writeFileSync(taskFile, request.task, { encoding: "utf8", mode: 0o600 });
+    fs.writeFileSync(taskFile, skillBinding?.task ?? request.task, { encoding: "utf8", mode: 0o600 });
     if (imagesFile) {
       fs.writeFileSync(imagesFile, JSON.stringify(request.images), {
         encoding: "utf8",
@@ -746,6 +757,7 @@ export class AgentManager {
           : []),
         ...(model ? ["--model", model] : []),
         ...(thinking ? ["--thinking", thinking] : []),
+        ...(skillBinding ? ["--skill-paths", JSON.stringify(skillBinding.skillPaths)] : []),
         ...(systemPrompt ? ["--system-prompt", systemPrompt] : []),
         ...(sessionFile ? ["--session-file", sessionFile] : []),
         ...(sessionExportFile ? ["--session-export-file", sessionExportFile] : []),

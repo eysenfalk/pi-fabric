@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext, Skill } from "@earendil-works/pi-coding-agent";
 import { resolveAgentDir } from "./core/agent-dir.js";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import fs from "node:fs";
@@ -63,6 +63,7 @@ export class FabricState {
   #activationGeneration: number | undefined;
   #config: FabricConfig | undefined;
   #kernelReloadRequired = false;
+  #hostSkills: readonly Skill[] = [];
 
   #cwd: string | undefined;
   #generation = 0;
@@ -115,6 +116,11 @@ export class FabricState {
 
   get cwd(): string | undefined {
     return this.#cwd;
+  }
+
+  /** Snapshot Pi's active, already-resolved Skill catalog for child invocations. */
+  setHostSkills(skills: readonly Skill[]): void {
+    this.#hostSkills = [...skills];
   }
 
   get widgetDismissedAt(): number {
@@ -474,6 +480,7 @@ export class FabricState {
         prewalk: this.prewalk,
         prewalkDrift: this.prewalkDrift,
         sessionApprovals: this.sessionApprovals,
+        hostSkills: () => this.#hostSkills,
         ...(this.#options.paths ? { paths: this.#options.paths } : {}),
       },
     );
