@@ -59,6 +59,8 @@ return {
 
 Independent calls run in parallel, and the returned object enters the model context. Known providers support concise direct calls such as `mcp.fal_ai.get_model_schema(...)`, `memory.recall(...)`, `state.get()`, `schema.status()`, and `compact.status()`. Refs found or computed at runtime use `tools.call({ ref, args })` (TypeScript notation). Python uses `await tools.call({"ref": ref, "args": args})`, native dictionary results, and `asyncio.gather` for independent calls.
 
+When the control flow is already proven, store it as a [reusable Fabric program](docs/programs.md) and invoke it by scope-qualified name to avoid regenerating the orchestration. `fabric_exec` accepts exactly one source: inline `code` or `program: "project/review"`, then applies the same runtime, capabilities, approvals, cancellation, and budgets. `/fabric programs` lists available global and trusted-project programs.
+
 To select Python, put this in `~/.pi/agent/fabric.json` or a trusted project's `.pi/fabric.json`, or use `/fabric settings` → **Executor** → **Kernel**:
 
 ```json
@@ -139,6 +141,7 @@ See the [interface & commands reference](docs/interface.md) for every view, keyb
 
 - [Configuration](docs/configuration.md): `fabric.json`, code modes, tool capture, approvals, and budgets.
 - [Execution kernels](docs/kernels.md): exclusive TypeScript/Python selection, Monty sandboxing, CPython escape hatch, agent inheritance, and examples.
+- [Reusable programs](docs/programs.md): named stored orchestration, manifests, parameter defaults, trust boundaries, and invocation.
 - [Memory & recall](docs/memory-recall.md): compact ranked hits, uniform follow calls, lossless expansion, and guest-local `memory.walk` computation.
 - [Interface & commands](docs/interface.md): dashboard, settings, keybindings, slash commands, and headless runs.
 - [Agents, actors & mesh](docs/agents.md): model handoff, `/fabric prewalk`, runners, transports, actors, councils, recursive queries, and durable coordination.

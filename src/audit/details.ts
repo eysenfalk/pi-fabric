@@ -10,6 +10,7 @@ export const FABRIC_EXECUTION_DETAILS_MAX_BYTES = 512 * 1024;
 export interface FabricPersistedExecutionDetailsV1 {
   success: boolean;
   kernel?: FabricKernel;
+  program?: { name: string; digest: string };
   trace: FabricExecutionTraceV1;
   /** Rich render audits persisted verbatim (minus in-memory media) so a resumed transcript re-renders — and expands — exactly like the live one. */
   audits: FabricLegacyRenderAudit[];
@@ -58,6 +59,7 @@ export interface FabricLegacyRenderAudit {
 export interface FabricExecutionRenderDetails {
   success?: boolean;
   kernel?: FabricKernel;
+  program?: { name: string; digest: string };
   error?: string;
   progress?: string;
   outputFormat?: "yaml" | "json";
@@ -100,6 +102,7 @@ const persistableAudit = (audit: FabricPersistableAuditInput): FabricLegacyRende
 export const createFabricPersistedExecutionDetails = (input: {
   success: boolean;
   kernel?: FabricKernel;
+  program?: { name: string; digest: string };
   trace: FabricExecutionTraceV1;
   audits?: readonly FabricPersistableAuditInput[];
   phases?: readonly string[];
@@ -111,6 +114,7 @@ export const createFabricPersistedExecutionDetails = (input: {
   const details: FabricPersistedExecutionDetailsV1 = {
     success: input.success,
     ...(input.kernel ? { kernel: input.kernel } : {}),
+    ...(input.program ? { program: structuredClone(input.program) } : {}),
     trace: cloneTrace(input.trace),
     audits: (input.audits ?? []).map(persistableAudit),
     phases: (input.phases ?? []).filter((phase): phase is string => typeof phase === "string"),
@@ -210,6 +214,9 @@ export const readFabricExecutionRenderDetails = (
     : undefined;
   return {
     ...(value.kernel === "typescript" || value.kernel === "python" ? { kernel: value.kernel } : {}),
+    ...(isRecord(value.program) && typeof value.program.name === "string" && typeof value.program.digest === "string"
+      ? { program: { name: value.program.name, digest: value.program.digest } }
+      : {}),
     ...(typeof value.success === "boolean"
       ? { success: value.success }
       : trace

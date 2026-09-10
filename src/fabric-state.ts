@@ -24,6 +24,12 @@ import { PrewalkDriftTracker } from "./prewalk/fs-drift.js";
 import type { PendingFabricHandoff } from "./prewalk/handoff.js";
 import type { AgentToolResultMessage } from "./agents/types.js";
 import type { FabricExecutionResult } from "./execution-service.js";
+import {
+  discoverFabricPrograms,
+  resolveFabricProgram,
+  type FabricProgramDiscovery,
+  type FabricResolvedProgram,
+} from "./programs/catalog.js";
 import type {
   FabricParticipantInfo,
   FabricParticipantListOptions,
@@ -148,6 +154,28 @@ export class FabricState {
   get compact(): FabricRuntimeState["compact"] { return this.#required().compact; }
   get repairs(): FabricRuntimeState["repairs"] { return this.#required().repairs; }
   get components(): FabricRuntimeState["components"] { return this.#required().components; }
+
+  async resolveProgram(
+    name: string,
+    payloads: Record<string, string> | undefined,
+    context: ExtensionContext,
+  ): Promise<FabricResolvedProgram> {
+    return resolveFabricProgram(name, payloads, this.config.executor.kernel, {
+      cwd: context.cwd,
+      agentDir: resolveAgentDir(),
+      projectTrusted: context.isProjectTrusted(),
+      managedHost: this.#managedHost !== undefined,
+    });
+  }
+
+  async discoverPrograms(context: ExtensionContext): Promise<FabricProgramDiscovery> {
+    return discoverFabricPrograms({
+      cwd: context.cwd,
+      agentDir: resolveAgentDir(),
+      projectTrusted: context.isProjectTrusted(),
+      managedHost: this.#managedHost !== undefined,
+    });
+  }
 
   setActivationHook(hook: ActivationHook, onFailure?: ActivationFailureHook): void {
     this.#activationHook = hook;

@@ -8,7 +8,7 @@ description: >-
 
 # fabric_exec — Python reference
 
-Write a Python async function body in `code`: top-level `await` and `return`, no enclosing function or event-loop runner. Every invocation starts fresh. Only the returned JSON-compatible value reaches the model; `print()` goes to activity logs. Use `True`, `False`, `None`, native dicts/lists, and dict access for results. Never switch interpreters through shell commands to perform Fabric orchestration.
+Pass exactly one source: a Python async function body in `code`, or a scope-qualified reusable `program`. Inline code supports top-level `await` and `return`, with no enclosing function or event-loop runner. Every invocation starts fresh. Only the returned JSON-compatible value reaches the model; `print()` goes to activity logs. Use `True`, `False`, `None`, native dicts/lists, and dict access for results. Never switch interpreters through shell commands to perform Fabric orchestration.
 
 ## Runtime boundary
 
@@ -37,6 +37,8 @@ return {"ok": r["ok"], "output": r["output"], "exitCode": r.get("exitCode")}
 Shell nonzero exits raise unless `settle=True`; timeout, cancellation, security and approval failures still raise. Shell `timeout` is seconds. No stdin option: write content to a file first, then use its path. Do not interpolate untrusted content into shell commands.
 
 Use top-level `payloads` for multiline content. Only exact keys supplied in this call exist: `π.body` or `payloads["body"]`. `π` is an attribute object; `payloads` is a separate dict. For a supplied `body` key, write with `await pi.write(path="notes.txt", content=π.body)`. Edit with `await pi.edit(path="notes.txt", edits=[{"oldText": "before", "newText": "after"}])`. Coalesce independent edits from one snapshot; use `all=True` only for intentional repeated anchors.
+
+Reusable programs use `program: "global/<name>"` or `program: "project/<name>"` instead of `code`. Their version-1 manifests declare Python source plus string payloads, required keys, and defaults. Project programs require project trust. `/fabric programs` lists available contracts. Resolution grants no authority and execution continues through the same Python backend, providers, approvals, Schema policy, cancellation, budgets, trace, and handoff boundary. See `docs/programs.md`; guest-to-guest `programs.run()` composition is not available in version 1.
 
 ## Discovery and host actions
 

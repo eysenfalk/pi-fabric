@@ -3,6 +3,7 @@ import { normalizeRunDisplay } from "./run-display.js";
 import { repairFabricGuestCode } from "./runtime/guest-code-repair.js";
 
 const OPTIONAL_FABRIC_EXEC_KEYS = [
+  "program",
   "payloads",
   "strings",
   "resultFormat",

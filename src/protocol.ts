@@ -430,3 +430,11 @@ export {
   MAX_FABRIC_MODEL_GUIDANCE_SNAPSHOT_CHARS,
   MAX_FABRIC_MODEL_GUIDANCE_TOTAL_CHARS,
 } from "./components/model-guidance.js";
+
+export type {
+  FabricProgramDescriptor,
+  FabricProgramDiscovery,
+  FabricProgramParameter,
+  FabricProgramScope,
+  FabricResolvedProgram,
+} from "./programs/catalog.js";

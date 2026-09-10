@@ -208,7 +208,7 @@ def _error_text(error, source):
             if item is not None:
                 pending.append((item, getattr(original, field)))
         pending.extend(zip(getattr(current, "exceptions", None) or [], getattr(original, "exceptions", [])))
-    text = "".join(rendered.format())
+    text = "".join(rendered.format()).replace("_HostError:", "RuntimeError:")
     if len(text) > 16000:
         text = text[:7900] + "\n[Python traceback truncated]\n" + text[-8000:]
     return text

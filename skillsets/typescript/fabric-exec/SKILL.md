@@ -9,7 +9,7 @@ description: >-
 
 # fabric_exec — core reference
 
-One program in the **TypeScript kernel**. Write TypeScript only in `code`. There is **no per-call kernel selector**, language autodetection, or fallback. Only the `return` value reaches the model; `print()` goes to activity logs. `π` is payload data, not a tool.
+One program in the **TypeScript kernel**. Pass exactly one source: TypeScript in `code`, or a scope-qualified reusable `program`. There is **no per-call kernel selector**, language autodetection, or fallback. Only the `return` value reaches the model; `print()` goes to activity logs. `π` is payload data, not a tool.
 
 QuickJS is isolated by default and receives static type checking; native Node/Bun is an explicit trusted-code escape hatch. Do not switch interpreters through shell commands to perform Fabric orchestration. Only the returned value reaches the model; logs go to activity output.
 
@@ -54,6 +54,8 @@ const window = await pi.read({ path: "src/engine.ts", offset: 120, limit: 80 });
 An unbounded `pi.read('/x')` returns at most 2000 lines or 50KB (whichever is hit first); truncated output ends with a `[Showing lines a-b of N. Use offset=n to continue.]` notice — continue with `offset` only when you truly need the full file. Reserve whole-file reads for small files you will use in full (configs, tests or files you are about to edit, sources under a few hundred lines). Batching several large whole-file reads into one program inflates the single tool result, and that enlarged result stays in every later turn's context.
 
 Keep multiline or syntax-heavy payloads out of `code`: pass them through `payloads` and read the exact matching key from `π`. For example, `payloads: { content: text }` is read as `π.content`; do not invent a different reference such as `π.task`. Every `π.key` must exist in the same call's top-level `payloads` map. TypeScript still parses template-literal contents, including shell heredocs. The legacy `strings` argument is accepted as an alias.
+
+Reusable programs use `program: "global/<name>"` or `program: "project/<name>"` instead of `code`. Their version-1 manifests declare TypeScript source plus string payloads, required keys, and defaults. Project programs require project trust. `/fabric programs` lists available contracts. Resolution grants no authority and execution continues through the same sandbox, providers, approvals, Schema policy, cancellation, budgets, trace, and handoff boundary. See `docs/programs.md`; guest-to-guest `programs.run()` composition is not available in version 1.
 
 ## First-class provider calls
 Use direct proxies when the action is known. Parallelize only independent calls: provider effect footprints record conflicts for overlapping or unknown non-commutative resources, and Fabric does not silently reorder them. No-argument actions such as `schema.status()`, `state.get()`, and `compact.status()` take no options object. Provider calls still cross the same registry validation, approval, audit, timeout, and cancellation path as generic calls.

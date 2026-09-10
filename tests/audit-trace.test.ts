@@ -1083,6 +1083,18 @@ return true;
     expect(JSON.stringify(trace)).not.toContain("secret");
   });
 
+  it("persists the immutable reusable-program identity without its source", () => {
+    const recorder = new FabricExecutionTraceRecorder();
+    const details = createFabricPersistedExecutionDetails({
+      success: true,
+      trace: recorder.seal("succeeded", []),
+      program: { name: "project/review", digest: "a".repeat(64) },
+    });
+
+    expect(details.program).toEqual({ name: "project/review", digest: "a".repeat(64) });
+    expect(readFabricExecutionRenderDetails(JSON.parse(JSON.stringify(details))).program).toEqual(details.program);
+  });
+
   it("persists bounded mixed-output highlighting metadata", () => {
     const recorder = new FabricExecutionTraceRecorder();
     const details = createFabricPersistedExecutionDetails({

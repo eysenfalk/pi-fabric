@@ -31,7 +31,9 @@ describe("exclusive kernel tool surface", () => {
     expect(python.parameters.properties).not.toHaveProperty("kernel");
     expect(python.parameters.properties).not.toHaveProperty("tokenBudget");
     expect(ts.parameters.properties).toHaveProperty("tokenBudget");
-    expect(python.parameters.required).toEqual(["code"]);
+    expect(ts.parameters.properties).toHaveProperty("program");
+    expect(python.parameters.properties).toHaveProperty("program");
+    expect(python.parameters.required).toBeUndefined();
   });
 
   it("describes Monty's subset without advertising native Python", () => {
