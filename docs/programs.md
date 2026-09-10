@@ -85,4 +85,4 @@ After resolution, execution is identical to inline code. Programs receive no add
 
 Version 1 supports top-level named invocation, normal control flow inside a program, string parameter contracts, defaults, global/project scopes, and discovery through `/fabric programs`.
 
-It intentionally does **not** add per-program slash commands or a guest `programs.run()` API. Named-to-named composition must eventually share the outer execution frame, capability view, budgets, trace, and handoff boundary. Recursively calling `FabricExecutionService.execute()` would create a second lifecycle boundary, so correct composition remains deferred.
+It intentionally does **not** add per-program slash commands or a guest `programs.run()` API. A possible composition capability is retained as a non-normative [Idea document](ideas/program-composition.md). If that direction is promoted later, it must preserve the outer execution frame, capability view, budgets, trace, and handoff boundary. Independent recursive `FabricExecutionService.execute()` lifecycles would violate that boundary.

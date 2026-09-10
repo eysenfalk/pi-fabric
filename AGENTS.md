@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## Delivery authority
+
+Follow [`docs/decisions/001-delivery-authority-and-information-hierarchy.md`](docs/decisions/001-delivery-authority-and-information-hierarchy.md). Only an active Story, its active Epic or milestone contract, accepted ADRs and architecture invariants, and current product documentation are normative implementation context.
+
+Roadmap, vision, and `docs/ideas/` content are non-normative. Do not implement, prepare for, generalize toward, or create abstractions for future ideas unless active delivery scope requires them.
+
 ## Golden rule: build when done
 
 Always finish a change with a fresh build before handing it back:
