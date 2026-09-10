@@ -5,6 +5,33 @@
 
 This roadmap records likely direction, not delivery commitments. It intentionally avoids acceptance criteria, story decomposition, implementation steps, and dependency contracts. Active GitHub milestones, Epics, and Stories define work that is actually authorized.
 
+```mermaid
+flowchart TB
+    Map["Directional roadmap · no authority by itself"]
+    Map --> Now["NOW · ProgramRunner v1"]
+    Map --> Next["NEXT · Composition feasibility"]
+    Map --> Later["LATER · Unordered idea memory"]
+
+    Now --> Contract["Active milestone #1 + Epic #3"]
+    Next --> Gate["Architecture decision gate · not implementation"]
+
+    subgraph Ideas["Possible directions · independently promotable"]
+        Invocation["Invocation"]
+        Skills["Skills"]
+        Prompts["Prompts"]
+        UI["UI / session"]
+        Authoring["Authoring"]
+        Conformance["Conformance"]
+    end
+
+    Later -.-> Invocation
+    Later -.-> Skills
+    Later -.-> Prompts
+    Later -.-> UI
+    Later -.-> Authoring
+    Later -.-> Conformance
+```
+
 ## NOW
 
 ### ProgramRunner v1 — governed execution parity

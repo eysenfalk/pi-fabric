@@ -27,6 +27,18 @@ They should not prescribe:
 
 ## Promotion
 
+```mermaid
+flowchart LR
+    Idea["Idea memory"] --> Evidence["Current evidence + decision owner"]
+    Evidence --> Gate{"Deliberately promote?"}
+    Gate -- "not yet" --> Idea
+    Gate -- "yes" --> Active["Active Epic or Story + milestone"]
+    Active --> Contract["Acceptance criteria + verification"]
+    Contract --> Delivery["Delivery"]
+    Delivery --> Docs["Current product documentation"]
+    Active -. "closed or superseded" .-> Idea
+```
+
 An idea becomes delivery scope only when:
 
 1. current evidence makes it plausible work,

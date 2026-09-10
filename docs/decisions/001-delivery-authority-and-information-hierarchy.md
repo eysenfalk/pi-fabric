@@ -24,6 +24,29 @@ Repository information has this authority order:
 
 Only levels 1–4 are normative implementation context.
 
+```mermaid
+flowchart TB
+    Story["1 · Active Story"] --> Epic["2 · Active Epic or milestone"]
+    Epic --> Decision["3 · Accepted ADRs and architecture invariants"]
+    Decision --> Product["4 · Current product documentation"]
+    Product -. "implementation-authority boundary" .-> Roadmap["5 · Roadmap"]
+    Roadmap --> Ideas["6 · Idea documents"]
+    Ideas --> Vision["7 · Vision"]
+
+    subgraph Normative["Normative implementation context"]
+        Story
+        Epic
+        Decision
+        Product
+    end
+
+    subgraph Directional["Directional memory · no implementation authority"]
+        Roadmap
+        Ideas
+        Vision
+    end
+```
+
 Roadmap, vision, and Idea documents describe direction and intent. They MUST NOT be interpreted as requirements, acceptance criteria, delivery commitments, dependencies, or authorization to implement functionality.
 
 Contributors and agents MUST NOT implement, prepare for, generalize toward, or create abstractions for future ideas unless required by active delivery scope.
