@@ -51,6 +51,12 @@ class _HostError(Exception):
         self.bash_exit = bash_exit
 
 
+# TracebackException's rendered type fields are read-only on Python 3.13.
+# Give the private bridge exception its public display name before capture.
+_HostError.__name__ = "RuntimeError"
+_HostError.__qualname__ = "RuntimeError"
+
+
 async def _call(ref, args):
     global _next_id
     if len(_pending) >= 256:
@@ -191,8 +197,6 @@ def _error_text(error, source):
         if isinstance(original, SyntaxError) and original.filename == "fabric-exec.py":
             frames = []
         current.stack = traceback.StackSummary.from_list(frames)
-        if current.exc_type is _HostError:
-            current.exc_type = RuntimeError
         if len(seen) >= 8:
             current.__cause__ = None
             current.__context__ = None

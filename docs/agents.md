@@ -24,6 +24,20 @@ You can give `fabric_exec` optional `agentBudget` and `tokenBudget` limits. Conf
 
 ## Agents
 
+### Bind host Skills to one invocation
+
+Pi agent calls accept `skills?: string[]`. Fabric resolves each exact name from Pi's active host-discovered Skill catalog before admission, expands the real Skill guidance in the requested order using Pi's native Skill block shape, and limits the child catalog to those files. A missing, duplicate, conflicting, or unreadable required Skill fails before model preparation or worker launch.
+
+```ts
+const plan = await workflow.agent(request, { skills: ["planning"] });
+const implementation = await workflow.agent(`Implement this plan:\n${plan}`, {
+  skills: ["implementation", "project-conventions"],
+});
+return workflow.agent("Review the finished implementation.", { skills: ["code-review"] });
+```
+
+The binding is invocation-local: the next call inherits nothing. Omit `skills` to preserve ordinary Pi Skill discovery; pass `skills: []` to expose no Skills to that child. The option is available on `agents.run`, `agents.spawn`, `agents.handoff`, `workflow.agent`, `council.run`, and `rlm.query`; it is rejected for non-Pi runners. Fabric consumes Pi's resolved catalog and does not scan Skill directories, create another registry, infer dependencies, or add persistent activation state.
+
 ### Requested models are authoritative
 
 For Pi workers, Fabric reapplies the resolved `provider/model` over RPC **after startup extensions finish**, reapplies the requested thinking level, and independently reads `get_state` before sending the task. A successful `set_model` response alone is insufficient: it can echo the requested model even when an extension switches away during `model_select`. Thinking is reported at Pi's effective, capability-clamped level.

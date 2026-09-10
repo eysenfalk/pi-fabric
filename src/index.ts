@@ -466,6 +466,7 @@ export default async function piFabric(pi: ExtensionAPI, options: { managedHost?
   };
 
   pi.on("session_start", async (_event, context) => {
+    state.setHostSkills([]);
     entropyLifecycleEpoch += 1;
     entropyEvidenceThisTurn = false;
     entropyCompilePending = undefined;
@@ -749,12 +750,13 @@ export default async function piFabric(pi: ExtensionAPI, options: { managedHost?
   });
 
   pi.on("before_agent_start", async (event, context) => {
+    const skills = event.systemPromptOptions.skills ?? [];
+    state.setHostSkills(skills);
     const config = state.bootstrapped ? state.config : DEFAULT_FABRIC_CONFIG;
     const fullCodeMode = config.fullCodeMode;
     const schemaMode = config.schema.mode;
     const effectiveFullCodeMode = fullCodeMode || schemaMode === "enforce";
     if (!pi.getActiveTools().includes("fabric_exec")) return;
-    const skills = event.systemPromptOptions.skills ?? [];
     const captureSnapshot = state.bootstrapped ? capturePolicy() : undefined;
     // Pi omits its entire skill catalog when the active tool set lacks a tool
     // named read. Restore Pi's discovered catalog (already bound to one skill

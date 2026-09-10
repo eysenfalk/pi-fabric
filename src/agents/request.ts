@@ -23,6 +23,7 @@ export const normalizeAgentRunRequest = (
       : undefined;
   const thinking = isFabricThinking(args.thinking) ? args.thinking : undefined;
   const tools = stringArray(args.tools);
+  const skills = stringArray(args.skills);
   const timeoutMs = typeof args.timeoutMs === "number" && Number.isFinite(args.timeoutMs) && args.timeoutMs > defaults.timeoutMs ? args.timeoutMs : undefined;
   const runner =
     args.runner === "pi" || args.runner === "claude" || args.runner === "veda"
@@ -52,6 +53,7 @@ export const normalizeAgentRunRequest = (
       : {}),
     ...(thinking ? { thinking } : {}),
     ...(tools ? { tools } : {}),
+    ...(skills ? { skills } : {}),
     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
     ...(typeof args.extensions === "boolean"
       ? { extensions: args.extensions }

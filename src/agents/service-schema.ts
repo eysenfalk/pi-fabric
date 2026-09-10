@@ -58,6 +58,7 @@ export function normalizeAgentServiceRequest(input: AgentServiceRequest): AgentS
   const args = agentServiceArgs("run", input as unknown as Record<string, unknown>);
   const request = normalizeAgentRunRequest(args, {runner: "pi", timeoutMs: 0}) as AgentServiceRequest;
   if (args.images !== undefined) request.images = structuredClone(args.images) as NonNullable<AgentServiceRequest["images"]>;
+  if (args.skills !== undefined) request.skills = structuredClone(args.skills) as string[];
   if (args.systemPrompt !== undefined) request.systemPrompt = args.systemPrompt as string;
   assertAgentTask(request);
   return structuredClone(request);

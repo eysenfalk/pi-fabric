@@ -62,6 +62,8 @@ interface FabricAgentRequest {
   persona?: string;
   thinking?: FabricThinking;
   tools?: string[];
+  /** Exact host-discovered Skill names active for this invocation, in order. */
+  skills?: string[];
   timeoutMs?: number;
   extensions?: boolean;
   recursive?: boolean;
@@ -91,6 +93,8 @@ interface FabricHandoffRequest {
   transport?: FabricTransport;
   thinking?: FabricThinking;
   tools?: string[];
+  /** Exact host-discovered Skill names active for this invocation, in order. */
+  skills?: string[];
   timeoutMs?: number;
   extensions?: boolean;
   recursive?: boolean;

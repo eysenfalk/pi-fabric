@@ -65,11 +65,11 @@ describe("script runtime resolution", () => {
   });
 
   it("requireNode accepts a node execPath but rejects a bun execPath", () => {
-    expect(resolveScriptRuntimeSync({ execPath: "/usr/local/bin/node", requireNode: true })).toBe(
+    expect(resolveScriptRuntimeSync({ execPath: "/usr/local/bin/node", requireNode: true, env: {} })).toBe(
       "/usr/local/bin/node",
     );
     expect(() =>
-      resolveScriptRuntimeSync({ execPath: "/usr/local/bin/bun", requireNode: true }),
+      resolveScriptRuntimeSync({ execPath: "/usr/local/bin/bun", requireNode: true, env: {} }),
     ).toThrow();
   });
 });

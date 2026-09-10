@@ -32,6 +32,11 @@ export const parseWorkerOptions = (
   const schemaFile = optional(args, "schema-file");
   const imagesFile = optional(args, "images-file");
   const systemPrompt = optional(args, "system-prompt");
+  const skillPathsSource = optional(args, "skill-paths");
+  const skillPaths = skillPathsSource ? JSON.parse(skillPathsSource) as unknown : undefined;
+  if (skillPaths !== undefined && (!Array.isArray(skillPaths) || skillPaths.some((entry) => typeof entry !== "string"))) {
+    throw new Error("Invalid worker Skill paths");
+  }
   const sessionFile = optional(args, "session-file");
   const sessionExportFile = optional(args, "session-export-file");
   const actorId = optional(args, "actor-id");
@@ -109,6 +114,7 @@ export const parseWorkerOptions = (
     ...(model ? { model } : {}),
     ...(thinking ? { thinking } : {}),
     ...(systemPrompt ? { systemPrompt } : {}),
+    ...(skillPaths ? { skillPaths: skillPaths as string[] } : {}),
     ...(sessionFile ? { sessionFile } : {}),
     ...(sessionExportFile ? { sessionExportFile } : {}),
     ...(actorId ? { actorId } : {}),
