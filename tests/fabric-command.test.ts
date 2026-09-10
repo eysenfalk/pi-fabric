@@ -546,3 +546,51 @@ describe("/fabric command", () => {
   });
 
 });
+
+
+describe("/fabric programs", () => {
+  it("lists named programs with parameter contracts and catalog errors", async () => {
+    let handler: ((argumentsText: string, context: ExtensionContext) => Promise<void>) | undefined;
+    const pi = {
+      registerCommand: vi.fn((_name: string, definition: { handler: typeof handler }) => {
+        handler = definition.handler;
+      }),
+    } as unknown as ExtensionAPI;
+    const state = {
+      ensure: vi.fn(async () => {}),
+      discoverPrograms: vi.fn(async () => ({
+        programs: [{
+          name: "project/review",
+          scope: "project",
+          description: "Review a request",
+          kernel: "typescript",
+          parameters: {
+            request: { type: "string", required: true },
+            preset: { type: "string", default: "standard" },
+          },
+        }],
+        errors: ["Manifest for global/broken is not valid JSON"],
+      })),
+    } as unknown as FabricState;
+    const notify = vi.fn();
+    const context = { ui: { notify } } as unknown as ExtensionContext;
+
+    registerFabricCommand(pi, {
+      state,
+      fabricUi: {} as FabricUiController,
+      capturedTools: {} as CapturedToolCatalog,
+      applyFabricMode: vi.fn(),
+      suspendToolCapture: vi.fn(),
+    });
+    await handler!("programs review", context);
+
+    expect(state.discoverPrograms).toHaveBeenCalledWith(context);
+    expect(notify).toHaveBeenCalledWith(
+      expect.stringContaining("project/review [typescript] — Review a request"),
+      "warning",
+    );
+    expect(notify.mock.calls[0]?.[0]).toContain("request:string!");
+    expect(notify.mock.calls[0]?.[0]).toContain('preset:string="standard"');
+    expect(notify.mock.calls[0]?.[0]).toContain("global/broken");
+  });
+});

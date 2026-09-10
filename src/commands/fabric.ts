@@ -305,6 +305,7 @@ export function registerFabricCommand(pi: ExtensionAPI, deps: FabricCommandDeps)
         "prewalk",
         "reload",
         "providers",
+        "programs",
         "agents",
         "actors",
         "messages",
@@ -569,6 +570,25 @@ export function registerFabricCommand(pi: ExtensionAPI, deps: FabricCommandDeps)
         context.ui.notify(
           providers.map((provider) => `${provider.name} — ${provider.description}`).join("\n"),
           "info",
+        );
+        return;
+      }
+      if (command === "programs") {
+        const query = argumentsList.join(" ").toLowerCase();
+        const discovery = await state.discoverPrograms(context);
+        const programs = discovery.programs.filter((program) =>
+          !query || `${program.name} ${program.description ?? ""}`.toLowerCase().includes(query)
+        );
+        const rows = programs.map((program) => {
+          const parameters = Object.entries(program.parameters).map(([name, parameter]) =>
+            `${name}:string${parameter.required && parameter.default === undefined ? "!" : ""}${parameter.default !== undefined ? `=${JSON.stringify(parameter.default)}` : ""}`
+          );
+          return `${program.name} [${program.kernel}]${program.description ? ` — ${program.description}` : ""}${parameters.length > 0 ? `\n  ${parameters.join(" · ")}` : ""}`;
+        });
+        const errors = discovery.errors.map((error) => `! ${error}`);
+        context.ui.notify(
+          [...rows, ...errors].join("\n") || (query ? `No Fabric programs matching ${JSON.stringify(query)}` : "No Fabric programs"),
+          discovery.errors.length > 0 ? "warning" : "info",
         );
         return;
       }

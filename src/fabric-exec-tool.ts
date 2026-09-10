@@ -147,7 +147,7 @@ export const createFabricExecTool = (
       ? monty
         ? "Execute Python through Fabric's configured Monty sandbox. Monty runs a Python subset with VM resource limits, no native filesystem/network/environment access, and only host-mediated tools. Each invocation starts fresh. This is the exclusive model tool path in full code mode and Schema enforce mode."
         : "Execute Python through Fabric’s configured CPython kernel for Pi core tools, MCP, providers, discovery, and extensions. Each call uses a fresh process. Native execution is trusted code; Schema enforce requires OS isolation. This is the exclusive model tool path in full code mode and Schema enforce mode."
-      : "Execute type-checked TypeScript through Fabric's configured executor for Pi core tools, MCP, Fabric providers, discovery, and extensions. QuickJS is isolated by default; the optional Node/Bun process is an unsafe trusted-code escape hatch. In full code mode, and always in Schema enforce mode, this is the exclusive model tool path.",
+      : "Execute type-checked TypeScript through Fabric's configured executor for Pi core tools, MCP, Fabric providers, discovery, and extensions, either from inline code or a named reusable program. QuickJS is isolated by default; the optional Node/Bun process is an unsafe trusted-code escape hatch. In full code mode, and always in Schema enforce mode, this is the exclusive model tool path.",
     promptSnippet:
       "Pi core tools, MCP, Fabric providers, discovery, and extensions",
     promptGuidelines: [
@@ -181,13 +181,16 @@ export const createFabricExecTool = (
     // prepareArguments remaps `strings` and parses a JSON-object string
     // back to Record<string, string> before Pi validates.
     parameters: Type.Object({
-      code: Type.String({
+      code: Type.Optional(Type.String({
         description: python
           ? monty
             ? "Python async function body executed by Monty, a sandboxed Python subset (not CPython). Top-level await/return and asyncio.gather are supported. Use only Monty's supported syntax/modules; native imports, filesystem, network, and environment are unavailable. Host globals: tools, mcp, memory, state, schema, compact, components, agents, mesh; full-code mode adds pi and extensions. Await dict/keyword calls; use native dict results r['output']. Payloads: π.key or payloads['key']. Return JSON-compatible data; each invocation starts fresh."
             : "Python async function body executed by CPython. Top-level await and return are supported; standard-library imports are available. Globals: tools, mcp, memory, state, schema, compact, components, agents, mesh; full-code mode adds pi and extensions. Await host calls using a dict or keyword arguments. Results are native dicts/lists: r['output'], not r.output. Use asyncio.gather for concurrency. Named payloads are π.key or payloads['key']. Return a JSON-compatible value. Each call starts fresh."
           : "TypeScript function body. Top-level await and return are supported. Globals include `tools`, `mcp`, `memory`, `state`, `schema`, `compact`, `agents`, `mesh`, `print`, and `π`; full-code mode adds `pi` and `extensions`. `π` contains only the exact keys supplied by this call's `payloads`. See session guidance / `fabric-exec` skill for exact signatures.",
-      }),
+      })),
+      program: Type.Optional(Type.String({
+        description: "Scope-qualified reusable program name: global/<name> or project/<name>. The manifest and source are loaded as data, validated, and executed through this invocation's existing kernel, capabilities, approvals, cancellation, and budgets.",
+      })),
       payloads: Type.Optional(
         Type.Record(Type.String(), Type.String(), {
           description:
@@ -247,7 +250,9 @@ export const createFabricExecTool = (
     },
     renderCall(params, theme, context) {
       observePiTheme(theme);
-      const code = Array.isArray(params.code) ? params.code.join("\n") : params.code;
+      const inlineCode = Array.isArray(params.code) ? params.code.join("\n") : params.code;
+      const programName = typeof params.program === "string" ? params.program : undefined;
+      const code = typeof inlineCode === "string" ? inlineCode : "";
       const mode = toolDisplayMode(state);
       const rendererState = context.state as FabricRendererState;
       const python = (rendererState.fabricKernel ?? toolKernel(state)) === "python";
@@ -287,9 +292,10 @@ export const createFabricExecTool = (
       if (mode === "compact" && !context.expanded) {
         const display = normalizeRunDisplay(params.display);
         // The kernel-aware memo serves the live card, activity and compaction.
-        const title = display?.name?.trim()
-          || (fabricExecTitleHintCached(code, python ? "python" : "typescript")
-            ?? (python ? "Python program" : undefined));
+          const title = display?.name?.trim()
+            || (programName ? `Run ${programName}` : undefined)
+            || (fabricExecTitleHintCached(code, python ? "python" : "typescript")
+              ?? (python ? "Python program" : undefined));
         const header = renderBoundedLines(
           [
             theme.fg("toolTitle", theme.bold(safeTerminalText(title || "Fabric"))),
@@ -308,12 +314,15 @@ export const createFabricExecTool = (
         return composite;
       }
 
-      const lines = safeTerminalText(code).split("\n");
+      const lines = programName ? [] : safeTerminalText(code).split("\n");
       const runDisplay = normalizeRunDisplay(params.display);
       const displayName = runDisplay?.name ? safeTerminalText(runDisplay.name) : "";
+      const sourceLabel = programName
+        ? `${python ? "Python" : "TypeScript"} · ${safeTerminalText(programName)}`
+        : `${python ? "Python" : "TypeScript"} · ${countLabel(lines.length, "line")}`;
       const title = `${theme.fg("toolTitle", theme.bold("fabric"))}${
         displayName ? ` ${theme.fg("accent", displayName)}` : ""
-      } ${theme.fg("dim", `${python ? "Python" : "TypeScript"} · ${countLabel(lines.length, "line")}`)}`;
+      } ${theme.fg("dim", sourceLabel)}`;
       // Match the compact header: the declared objective sits between the
       // title and the code preview.
       const description = runDisplay?.description
@@ -823,10 +832,21 @@ export const createFabricExecTool = (
       // prepareArguments joins code arrays / remaps `strings` → `payloads`
       // and quotes unquoted pi path arguments before Pi validates this call;
       // keep the same coercion here for direct internal invocations.
-      const joined = Array.isArray(params.code) ? params.code.join("\n") : params.code;
+      const inlineCode = Array.isArray(params.code) ? params.code.join("\n") : params.code;
+      const programName = typeof params.program === "string" ? params.program.trim() : "";
+      const hasCode = typeof inlineCode === "string";
+      const hasProgram = programName.length > 0;
+      if (hasCode === hasProgram) {
+        throw new Error("fabric_exec requires exactly one execution source: code or program");
+      }
+      const suppliedPayloads = resolveFabricExecPayloads(params);
+      const resolvedProgram = hasProgram
+        ? await state.resolveProgram(programName, suppliedPayloads, context)
+        : undefined;
+      const joined = resolvedProgram?.code ?? (typeof inlineCode === "string" ? inlineCode : "");
       const code = state.config.executor.kernel === "python" ? joined : repairFabricGuestCode(joined);
       const runDisplay = normalizeRunDisplay(params.display);
-      const strings = resolveFabricExecPayloads(params);
+      const strings = resolvedProgram?.payloads ?? suppliedPayloads;
       const tokenBudget = "tokenBudget" in params && typeof params.tokenBudget === "number"
         ? params.tokenBudget : undefined;
       const result = await state.execution.execute({
@@ -912,6 +932,9 @@ export const createFabricExecTool = (
       const persistedRenderDetails = () =>
         createFabricPersistedExecutionDetails({
           ...result,
+          ...(resolvedProgram
+            ? { program: { name: resolvedProgram.name, digest: resolvedProgram.digest } }
+            : {}),
           ...(outputFormat ? { outputFormat, outputFormatStartLine } : {}),
           ...(outputFormat
             ? {

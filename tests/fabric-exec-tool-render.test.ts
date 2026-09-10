@@ -106,6 +106,16 @@ describe("registered fabric_exec compact transcript rendering", () => {
     expect(renderCall(tool, { code: '# pi.bash("fake")\nreturn 1' })).toContain("Python program");
   });
 
+  it("renders reusable program names without pretending the stored source was inline", () => {
+    const args = { program: "project/review", payloads: { request: "Audit auth" } };
+    const compact = renderCall(toolFor(stateFor("compact")), args);
+    const full = renderCall(toolFor(stateFor("full")), args, true);
+
+    expect(compact).toContain("Run project/review");
+    expect(full).toContain("TypeScript · project/review");
+    expect(full).not.toContain("Audit auth");
+  });
+
   it("keeps full source while compact elevates intent and falls back to Fabric for absent or blank names", () => {
     const args = {
       code: "const implementationSecret = await discover();\nreturn implementationSecret;",

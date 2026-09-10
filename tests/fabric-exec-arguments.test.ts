@@ -24,6 +24,7 @@ describe("prepareFabricExecArguments", () => {
   it("omits null optional fields but preserves a null required code", () => {
     expect(prepareFabricExecArguments({
       code: null,
+      program: null,
       payloads: null,
       strings: null,
       resultFormat: null,
