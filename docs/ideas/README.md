@@ -52,6 +52,7 @@ Closing or superseding an Epic does not erase its thinking; the durable intent r
 ## Current ideas
 
 - [`program-composition.md`](program-composition.md)
+- [`program-runner.md`](program-runner.md)
 - [`program-invocation.md`](program-invocation.md)
 - [`pi-skills-in-programs.md`](pi-skills-in-programs.md)
 - [`prompt-resources.md`](prompt-resources.md)

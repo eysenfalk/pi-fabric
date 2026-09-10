@@ -28,3 +28,20 @@ Pi-Fabric is a programmable tool and agent runtime for Pi. It is not, by default
 - or a promise that every future idea will be implemented.
 
 Potential extensions are retained in [`../ideas/`](../ideas/README.md). Only active delivery artifacts can authorize their implementation.
+
+## Fork posture
+
+This fork intentionally explores additive Pi-Fabric capabilities that may not exist upstream. Divergence is a means for testing concrete user value, not evidence that the fork is inherently better.
+
+We preserve the upstream project's defining taste:
+
+- one flat, model-facing programmable tool;
+- one checked execution foundation and one authoritative provider-policy path;
+- explicit host-mediated trust, effects, approvals, cancellation, and budgets;
+- progressive, user-chosen complexity rather than ambient orchestration;
+- generic data-driven UI instead of workflow-specific chrome; and
+- precise documentation of implemented behavior, boundaries, and failure semantics.
+
+We diverge deliberately only when a concrete user-facing outcome cannot be delivered coherently through the existing mechanisms. The preferred change is the smallest additive seam that preserves ordinary behavior, can be removed or rolled back, and remains valuable without speculative follow-on work. Where practical, such slices should remain independently understandable and upstreamable; local utility does not depend on upstream acceptance.
+
+This posture guides product judgment. It does not authorize any particular implementation.
