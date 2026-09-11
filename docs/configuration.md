@@ -64,6 +64,8 @@ effective timeout = min(
 
 where absent values do not participate. Orchestration programs (`agents.run` / `agents.wait` / `agents.ask`, `workflow.agent`, ...) keep their separate `agents.timeoutMs` floor, which is unaffected by `executor.maxTimeoutMs`.
 
+The executor measures **active execution time**, not time a human spends in a trusted host interaction. While `interactions.request` is the only pending host call, the deadline pauses indefinitely. Escape, session shutdown, and external abort still cancel the wait. On an answer, Fabric resumes the same remaining budget; it does not reset it, so repeated dialogs cannot create unbounded compute time. If ordinary host work runs concurrently with a dialog, the deadline remains active.
+
 ## Full reference
 
 ```json

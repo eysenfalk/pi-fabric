@@ -30,10 +30,12 @@
   "files": [
     "dist/",
     "skillsets/",
+    "programs/",
     "docs/",
     "README.md",
     "LICENSE",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "THIRD_PARTY_LICENSES/"
   ],
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json --emitDeclarationOnly && node scripts/build.mjs && bun run assert:build-artifacts",
@@ -41,6 +43,8 @@
     "test": "vitest run",
     "test:changed": "node scripts/test-dirty.mjs",
     "test:related": "vitest related --run",
+    "test:e2e:implement": "node scripts/e2e/implement-tui.mjs",
+    "test:e2e": "bun run test:e2e:implement",
     "check:fast": "bun run typecheck && bun run test:changed",
     "certify:context": "bun run build && node scripts/certify-context.mjs",
     "certify:entropy": "bun run build && node scripts/certify-entropy.mjs",
@@ -98,6 +102,7 @@
     "@shikijs/themes": "4.4.3",
     "cross-spawn": "^7.0.6",
     "diff": "^9.0.0",
+    "grok-mermaid": "0.2.2",
     "mcporter": "^0.12.3",
     "quickjs-emscripten-core": "^0.32.0",
     "shiki": "4.4.3",

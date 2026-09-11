@@ -8,6 +8,8 @@ The workflow vocabulary was informed by Anthropic's dynamic workflows documentat
 
 Pi Fabric adapts cooperative shell rendering, core-tool preview, diff, path-list, warning, and word-emphasis logic from the MIT-licensed [`pi-code-previews`](https://github.com/mattleong/pi-code-previews) package.
 
+Terminal Mermaid rendering uses the Apache-2.0-licensed [`grok-mermaid`](https://github.com/xl0/grok-mermaid) package. Its full license is distributed at [`THIRD_PARTY_LICENSES/grok-mermaid-LICENSE`](THIRD_PARTY_LICENSES/grok-mermaid-LICENSE).
+
 ## pi-code-previews
 
 MIT License

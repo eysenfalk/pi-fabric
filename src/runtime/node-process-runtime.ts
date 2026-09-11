@@ -5,6 +5,7 @@ import { isPiShellRef } from "../core/pi-tools.js";
 import { guestSetupSource } from "./quickjs-runtime.js";
 import type { FabricHostCall, FabricSandboxOptions, FabricSandboxResult } from "./kernel.js";
 import { NODE_PROCESS_CHILD_SOURCE } from "./node-process-child-source.js";
+import { ActiveExecutionDeadline, HostCallDeadlineTracker } from "./active-execution-deadline.js";
 import { createGuestStackMap, remapGuestErrorText } from "./guest-stack-map.js";
 import { transpileFabricCodeWithSourceMap } from "./type-checker.js";
 import {
@@ -92,10 +93,7 @@ export class NodeProcessRuntime {
       };
     }
     const hostAbortController = new AbortController();
-    const startedAt = Date.now();
-    let effectiveTimeoutMs = options.timeoutMs;
-    let deadlineAt = startedAt + effectiveTimeoutMs;
-    let deadline: NodeJS.Timeout | undefined;
+    let executionDeadline: ActiveExecutionDeadline | undefined;
     let abortHandler: (() => void) | undefined;
     let settled = false;
     let finishing = false;
@@ -111,7 +109,7 @@ export class NodeProcessRuntime {
       const finish = (result: FabricSandboxResult): void => {
         if (settled) return;
         settled = true;
-        if (deadline) clearTimeout(deadline);
+        executionDeadline?.dispose();
         if (abortHandler) options.signal?.removeEventListener("abort", abortHandler);
         if (!hostAbortController.signal.aborted && hostTasks.size > 0) {
           hostAbortController.abort(new Error(result.error ?? "Process execution stopped"));
@@ -121,23 +119,12 @@ export class NodeProcessRuntime {
         if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
         resolve(result);
       };
-      const scheduleDeadline = (): void => {
-        if (deadline) clearTimeout(deadline);
-        deadline = setTimeout(() => {
-          const error = `Execution timed out after ${effectiveTimeoutMs}ms`;
-          finish({ value: undefined, logs: [], terminationReason: "timed_out", error });
-        }, Math.max(0, deadlineAt - Date.now()));
-        deadline.unref?.();
-      };
-      const extendDeadline = (ref: string, args: Record<string, unknown>): void => {
-        const requested = options.minimumTimeoutMsForHostCall?.(ref, args);
-        if (typeof requested !== "number" || !Number.isFinite(requested)) return;
-        const nextDeadlineAt = Date.now() + Math.max(1, Math.floor(requested));
-        if (nextDeadlineAt <= deadlineAt) return;
-        deadlineAt = nextDeadlineAt;
-        effectiveTimeoutMs = deadlineAt - startedAt;
-        scheduleDeadline();
-      };
+      const deadline = new ActiveExecutionDeadline(options.timeoutMs, () => {
+        const error = `Execution timed out after ${deadline.timeoutMs}ms`;
+        finish({ value: undefined, logs: [], terminationReason: "timed_out", error });
+      });
+      executionDeadline = deadline;
+      const hostCallDeadlines = new HostCallDeadlineTracker(deadline);
 
       abortHandler = () => {
         finish({
@@ -154,7 +141,7 @@ export class NodeProcessRuntime {
         const message = raw as ChildMessage;
         if (message.type === "result") {
           finishing = true;
-          if (deadline) clearTimeout(deadline);
+          executionDeadline?.dispose();
           if (message.result.terminationReason !== "completed" && !hostAbortController.signal.aborted) {
             hostAbortController.abort(new Error(message.result.error ?? "Process execution stopped"));
           }
@@ -178,7 +165,10 @@ export class NodeProcessRuntime {
           return;
         }
         if (message.type !== "call") return;
-        extendDeadline(message.ref, message.args);
+        deadline.extendMinimum(options.minimumTimeoutMsForHostCall?.(message.ref, message.args));
+        const endHostCall = hostCallDeadlines.begin(
+          options.suspendsTimeoutForHostCall?.(message.ref, message.args) === true,
+        );
         const task = runAbortable(hostAbortController.signal, () =>
           hostCall(message.ref, message.args, hostAbortController.signal),
         ).then(
@@ -191,7 +181,7 @@ export class NodeProcessRuntime {
               error: error instanceof Error ? error.message : String(error),
               bashExit: isPiShellRef(message.ref) ? piBashExitMetadata(error) : undefined,
             }),
-        );
+        ).finally(endHostCall);
         hostTasks.add(task);
         void task.finally(() => hostTasks.delete(task));
       });
@@ -214,7 +204,6 @@ export class NodeProcessRuntime {
         });
       });
 
-      scheduleDeadline();
       send(child, {
         type: "execute",
         setup: guestSetupSource(options.piToolCanonicalFields),

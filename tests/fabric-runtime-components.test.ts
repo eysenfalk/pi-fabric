@@ -121,6 +121,7 @@ describe("Fabric runtime provider components", () => {
           "fabric.provider.agents",
           "fabric.provider.compact",
           "fabric.provider.extensions",
+          "fabric.provider.interactions",
           "fabric.provider.mcp",
           "fabric.provider.memory",
           "fabric.provider.mesh",
@@ -145,6 +146,7 @@ describe("Fabric runtime provider components", () => {
           ...[
             "pi",
             "extensions",
+            "interactions",
             "mcp",
             "mesh",
             "state",

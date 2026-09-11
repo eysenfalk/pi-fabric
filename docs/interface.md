@@ -180,12 +180,14 @@ async invoke(actionName, args, context) {
 ## Commands
 
 ```text
+/implement
 /fabric status
 /fabric dashboard
 /fabric chat [participant-id-or-name]
 /fabric settings
 /fabric reload
 /fabric providers
+/fabric programs [query]
 /fabric captured [query]
 /fabric agents
 /fabric actors
@@ -195,6 +197,8 @@ async invoke(actionName, args, context) {
 /fabric repairs
 /fabric entropy
 ```
+
+`/implement` is TUI-only: it collects task and constraints, shows a Mermaid-backed Markdown workflow, and runs the built-in Program only after explicit approval. See [Reusable Fabric programs](programs.md#built-in-implement-prototype).
 
 Actor slash commands mirror the [global template API](agents.md#global-actor-templates). `/fabric global` lists templates. `/fabric import <name> [as <new>]` stamps one into the project. `/fabric export <id> [--overwrite]` promotes a project actor. `/fabric log <id>` previews an actor or run transcript, and `/fabric export-log <id> [path]` writes the raw `session.jsonl` plus retained `runs/` to disk.
 

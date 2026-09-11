@@ -77,7 +77,9 @@ type CommandHandler = (argumentsText: string, context: ExtensionContext) => Prom
 
 const commandHandlerOf = (pi: ExtensionAPI): CommandHandler => {
   const registerCommand = (pi as unknown as { registerCommand: ReturnType<typeof vi.fn> }).registerCommand;
-  const definition = registerCommand.mock.calls[0]?.[1] as { handler?: CommandHandler } | undefined;
+  const definition = registerCommand.mock.calls.find(([name]) => name === "fabric")?.[1] as
+    | { handler?: CommandHandler }
+    | undefined;
   expect(definition?.handler).toBeTypeOf("function");
   return definition!.handler!;
 };

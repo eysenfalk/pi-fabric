@@ -437,6 +437,37 @@ return self.name;
     expect(Date.now() - startedAt).toBeLessThan(2_000);
   });
 
+  it("pauses the active deadline while awaiting a human interaction", async () => {
+    const result = await new QuickJsRuntime().execute(
+      'return tools.call({ ref: "interactions.request", args: {} });',
+      async () => new Promise((resolve) => setTimeout(() => resolve("answered"), 120)),
+      {
+        ...options,
+        timeoutMs: 40,
+        suspendsTimeoutForHostCall: (ref, args) =>
+          ref === "fabric.$call" && args.ref === "interactions.request",
+      },
+    );
+    expect(result).toMatchObject({ terminationReason: "completed", value: "answered" });
+  });
+
+  it("still cancels while the active deadline is paused", async () => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 60);
+    const result = await new QuickJsRuntime().execute(
+      'return tools.call({ ref: "interactions.request", args: {} });',
+      async () => new Promise(() => undefined),
+      {
+        ...options,
+        timeoutMs: 30,
+        signal: controller.signal,
+        suspendsTimeoutForHostCall: (ref, args) =>
+          ref === "fabric.$call" && args.ref === "interactions.request",
+      },
+    );
+    expect(result.terminationReason).toBe("aborted");
+  });
+
   it("classifies timeout and abort words in thrown runtime errors as runtime failures", async () => {
     for (const message of ["business timeout was rejected", "operation was aborted upstream"]) {
       const result = await new QuickJsRuntime().execute(

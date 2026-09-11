@@ -55,7 +55,7 @@ An unbounded `pi.read('/x')` returns at most 2000 lines or 50KB (whichever is hi
 
 Keep multiline or syntax-heavy payloads out of `code`: pass them through `payloads` and read the exact matching key from `π`. For example, `payloads: { content: text }` is read as `π.content`; do not invent a different reference such as `π.task`. Every `π.key` must exist in the same call's top-level `payloads` map. TypeScript still parses template-literal contents, including shell heredocs. The legacy `strings` argument is accepted as an alias.
 
-Reusable programs use `program: "global/<name>"` or `program: "project/<name>"` instead of `code`. Their version-1 manifests declare TypeScript source plus string payloads, required keys, and defaults. Project programs require project trust. `/fabric programs` lists available contracts. Resolution grants no authority and execution continues through the same sandbox, providers, approvals, Schema policy, cancellation, budgets, trace, and handoff boundary. See `docs/programs.md`; guest-to-guest `programs.run()` composition is not available in version 1.
+Reusable programs use `program: "builtin/<name>"`, `program: "global/<name>"`, or `program: "project/<name>"` instead of `code`. Their version-1 manifests declare TypeScript source plus string payloads, required keys, and defaults. Project programs require project trust. `/fabric programs` lists available contracts. Resolution grants no authority and execution continues through the same sandbox, providers, approvals, Schema policy, cancellation, budgets, trace, and handoff boundary. See `docs/programs.md`; guest-to-guest `programs.run()` composition is not available in version 1.
 
 ## First-class provider calls
 Use direct proxies when the action is known. Parallelize only independent calls: provider effect footprints record conflicts for overlapping or unknown non-commutative resources, and Fabric does not silently reorder them. No-argument actions such as `schema.status()`, `state.get()`, and `compact.status()` take no options object. Provider calls still cross the same registry validation, approval, audit, timeout, and cancellation path as generic calls.
@@ -89,6 +89,7 @@ All calls return promises. Fields ending in `?` are optional; `unknown` marks pr
 | `compact.request(args?)` | `{requested:true,intent:{reason?,instructions?,preserve?,requestedBy,requestedAt}}` |
 | `compact.status()` | `{pending?:CompactIntent,last?:{at,requestedBy,status,summary?,tokensBefore?,estimatedTokensAfter?,error?}}` |
 | `compact.cancel()` | `{cancelled:true}` |
+| `interactions.request(args)` | `{status:"answered",value:string}` or `{status:"cancelled"}`; TUI-only text input/select approval, with optional Markdown preview |
 
 `memory.recall` multi-term literal queries default to ranked `queryMatch: "any"` so wording differences do not hide evidence; use `"all"` to require every canonical term in one indexed entry, and `queryMode: "phrase"` when adjacency matters. Results are hard-bounded either way. Structural filters (`ref`, `provider`, `action`, `outcome`) use exact persisted trace fields. Use `tools.catalog()`/`tools.search()` only to choose a current action head—catalog descriptions are navigation metadata and never become session evidence.
 

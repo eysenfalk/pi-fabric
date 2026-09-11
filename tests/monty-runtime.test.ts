@@ -163,6 +163,19 @@ describe.skipIf(Boolean(missing))(`MontyRuntime native 0.0.23${missing ? " (" + 
     expect(result).toMatchObject({ terminationReason: "completed", value: "done" });
   });
 
+  it("pauses the active deadline while awaiting a human interaction", async () => {
+    const result = await run(
+      'return await tools.call(ref="interactions.request", args={})',
+      async () => new Promise((resolve) => setTimeout(() => resolve("answered"), 350)),
+      {
+        timeoutMs: 200,
+        suspendsTimeoutForHostCall: (ref, args) =>
+          ref === "fabric.$call" && args.ref === "interactions.request",
+      },
+    );
+    expect(result).toMatchObject({ terminationReason: "completed", value: "answered" });
+  });
+
   it("sets an explicit long native request watchdog when host floors are enabled", async () => {
     const native = await import("@pydantic/monty/node");
     const create = native.Monty.create.bind(native.Monty);

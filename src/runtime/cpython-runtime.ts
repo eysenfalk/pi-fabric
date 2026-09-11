@@ -9,6 +9,7 @@ import { StringDecoder } from "node:string_decoder";
 import { runAbortable, settleWithin } from "../async-settlement.js";
 import { piBashExitMetadata } from "../core/pi-bash-error.js";
 import { isPiShellRef } from "../core/pi-tools.js";
+import { ActiveExecutionDeadline, HostCallDeadlineTracker } from "./active-execution-deadline.js";
 import type { FabricHostCall, FabricKernelRuntime, FabricSandboxOptions, FabricSandboxResult } from "./kernel.js";
 import { CPYTHON_CHILD_SOURCE } from "./cpython-child-source.js";
 import { linuxCPythonNetworkFilter } from "./cpython-linux-sandbox.js";
@@ -122,8 +123,7 @@ export class CPythonRuntime implements FabricKernelRuntime {
       let truncated = false;
       let settled = false;
       let finishing = false;
-      let deadline: NodeJS.Timeout | undefined;
-      let deadlineAt = startedAt + options.timeoutMs;
+      let executionDeadline: ActiveExecutionDeadline | undefined;
       let buffer = Buffer.alloc(0);
       let child: ReturnType<typeof spawn>;
       try {
@@ -158,7 +158,7 @@ export class CPythonRuntime implements FabricKernelRuntime {
         if (settled) return;
         for (let index = 0; index < decoders.length; index++) appendLog(index, decoders[index]!.end());
         settled = true;
-        if (deadline) clearTimeout(deadline);
+        executionDeadline?.dispose();
         options.signal?.removeEventListener("abort", abort);
         if (!hostAbort.signal.aborted) hostAbort.abort(new Error(result.error ?? "CPython execution ended"));
         channel?.destroy();
@@ -184,13 +184,13 @@ export class CPythonRuntime implements FabricKernelRuntime {
       };
       const abort = (): void => void finish({ value: undefined, terminationReason: "aborted", error: "Execution cancelled" });
       const fail = (message: string): void => void finish({ value: undefined, terminationReason: "runtime_error", error: message });
-      const scheduleDeadline = (): void => {
-        if (deadline) clearTimeout(deadline);
-        deadline = setTimeout(() => void finish({
-          value: undefined, terminationReason: "timed_out", error: `Execution timed out after ${deadlineAt - startedAt}ms`,
-        }), Math.max(0, deadlineAt - Date.now()));
-        deadline.unref?.();
-      };
+      const deadline = new ActiveExecutionDeadline(options.timeoutMs, () => void finish({
+        value: undefined,
+        terminationReason: "timed_out",
+        error: `Execution timed out after ${deadline.timeoutMs}ms`,
+      }), startedAt);
+      executionDeadline = deadline;
+      const hostCallDeadlines = new HostCallDeadlineTracker(deadline);
       const send = (message: unknown): void => {
         // A terminal guest result closes its reply channel while issued host
         // work may still be settling. Its late replies are no longer consumed.
@@ -242,16 +242,15 @@ export class CPythonRuntime implements FabricKernelRuntime {
         const args = message.args;
         callIds.add(id);
         try {
-          const floor = options.minimumTimeoutMsForHostCall?.(ref, args);
-          if (typeof floor === "number" && Number.isFinite(floor) && Date.now() + floor > deadlineAt) {
-            deadlineAt = Date.now() + Math.max(1, Math.floor(floor));
-            scheduleDeadline();
-          }
+          deadline.extendMinimum(options.minimumTimeoutMsForHostCall?.(ref, args));
         } catch (error) { fail(`CPython deadline policy failed: ${errorText(error)}`); return; }
+        const endHostCall = hostCallDeadlines.begin(
+          options.suspendsTimeoutForHostCall?.(ref, args) === true,
+        );
         const task = runAbortable(hostAbort.signal, () => hostCall(ref, args, hostAbort.signal)).then(
           (value) => send({ type: "response", id, ok: true, value }),
           (error) => send({ type: "response", id, ok: false, error: errorText(error), ...(isPiShellRef(ref) ? { bashExit: piBashExitMetadata(error) } : {}) }),
-        ).finally(() => { hostTasks.delete(task); callIds.delete(id); });
+        ).finally(() => { endHostCall(); hostTasks.delete(task); callIds.delete(id); });
         hostTasks.add(task);
       };
       const onData = (chunk: Buffer): void => {
@@ -306,7 +305,6 @@ export class CPythonRuntime implements FabricKernelRuntime {
         filterPipe.on("error", (error) => { if (!settled) fail(`CPython sandbox filter failed: ${error.message}`); });
         filterPipe.end(command.seccomp);
       }
-      scheduleDeadline();
       if (ipc) {
         // Windows: the child dials the loopback listener and proves the token first.
         ipc.server.on("connection", (socket) => {

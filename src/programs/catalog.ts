@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { FabricKernel } from "../runtime/kernel.js";
 
 const FABRIC_PROGRAM_MANIFEST_VERSION = 1 as const;
@@ -8,7 +10,7 @@ const FABRIC_PROGRAM_MAX_MANIFEST_BYTES = 64 * 1024;
 const FABRIC_PROGRAM_MAX_SOURCE_BYTES = 512 * 1024;
 const FABRIC_PROGRAM_MAX_COUNT = 128;
 
-export type FabricProgramScope = "global" | "project";
+export type FabricProgramScope = "builtin" | "global" | "project";
 
 export interface FabricProgramParameter {
   type: "string";
@@ -37,6 +39,7 @@ export interface FabricProgramDiscovery {
 }
 
 interface FabricProgramRoots {
+  builtin: string;
   global: string;
   project: string;
 }
@@ -54,6 +57,8 @@ interface FabricProgramContext {
   agentDir: string;
   projectTrusted: boolean;
   managedHost?: boolean;
+  /** Test/embedding override; normal Pi sessions resolve the package-owned root. */
+  builtinRoot?: string;
 }
 
 const PROGRAM_NAME_SEGMENT = /^[a-z0-9][a-z0-9._-]*$/;
@@ -145,15 +150,27 @@ const parseManifest = (text: string, label: string): FabricProgramManifestV1 => 
   };
 };
 
-const fabricProgramRoots = (context: Pick<FabricProgramContext, "cwd" | "agentDir">): FabricProgramRoots => ({
+const defaultBuiltinRoot = (): string => {
+  // Source tests resolve from src/programs/catalog.ts; the built extension resolves
+  // from dist/index.js. Select the first candidate that contains the bundled Program.
+  const candidates = [
+    fileURLToPath(new URL("../programs", import.meta.url)),
+    fileURLToPath(new URL("../../programs", import.meta.url)),
+  ];
+  return candidates.find((candidate) => existsSync(path.join(candidate, "implement.json")))
+    ?? candidates[0]!;
+};
+
+const fabricProgramRoots = (context: FabricProgramContext): FabricProgramRoots => ({
+  builtin: context.builtinRoot ?? defaultBuiltinRoot(),
   global: path.join(context.agentDir, "fabric", "programs"),
   project: path.join(context.cwd, ".pi", "fabric", "programs"),
 });
 
 const parseProgramName = (name: string): { scope: FabricProgramScope; id: string } => {
   const [scope, ...segments] = name.split("/");
-  if ((scope !== "global" && scope !== "project") || segments.length === 0 || segments.some((segment) => !PROGRAM_NAME_SEGMENT.test(segment))) {
-    throw new Error(`Program name must be scope-qualified as global/<name> or project/<name>`);
+  if ((scope !== "builtin" && scope !== "global" && scope !== "project") || segments.length === 0 || segments.some((segment) => !PROGRAM_NAME_SEGMENT.test(segment))) {
+    throw new Error(`Program name must be scope-qualified as builtin/<name>, global/<name>, or project/<name>`);
   }
   return { scope, id: segments.join("/") };
 };
@@ -162,8 +179,10 @@ const readDefinition = async (
   name: string,
   context: FabricProgramContext,
 ): Promise<{ descriptor: FabricProgramDescriptor; code: string }> => {
-  if (context.managedHost) throw new Error("Local Fabric programs are unavailable in managed hosts");
   const { scope, id } = parseProgramName(name);
+  if (context.managedHost && scope !== "builtin") {
+    throw new Error("Local Fabric programs are unavailable in managed hosts");
+  }
   if (scope === "project" && !context.projectTrusted) {
     throw new Error("Project Fabric programs require a trusted project");
   }
@@ -266,9 +285,13 @@ const manifestIds = async (root: string): Promise<string[]> => {
 };
 
 export const discoverFabricPrograms = async (context: FabricProgramContext): Promise<FabricProgramDiscovery> => {
-  if (context.managedHost) return { programs: [], errors: ["Local Fabric programs are unavailable in managed hosts"] };
   const roots = fabricProgramRoots(context);
-  const scopes: FabricProgramScope[] = context.projectTrusted ? ["global", "project"] : ["global"];
+  const localScopes: FabricProgramScope[] = context.projectTrusted
+    ? ["global", "project"]
+    : ["global"];
+  const scopes: FabricProgramScope[] = context.managedHost
+    ? ["builtin"]
+    : ["builtin", ...localScopes];
   const programs: FabricProgramDescriptor[] = [];
   const errors: string[] = [];
   for (const scope of scopes) {

@@ -63,6 +63,19 @@ const required = [
 const missing = required.filter((file) => !existsSync(join(dist, file)));
 if (missing.length > 0) throw new Error(`Missing build artifacts:\n${missing.join("\n")}`);
 
+const programResources = [
+  "programs/implement.json",
+  "programs/implement.ts",
+  "programs/skills/fabric-implement-plan/SKILL.md",
+  "programs/skills/fabric-implement-change/SKILL.md",
+  "programs/skills/fabric-implement-verify/SKILL.md",
+  "THIRD_PARTY_LICENSES/grok-mermaid-LICENSE",
+];
+const missingProgramResources = programResources.filter((file) => !existsSync(join(root, file)));
+if (missingProgramResources.length > 0) {
+  throw new Error(`Missing built-in Program resources:\n${missingProgramResources.join("\n")}`);
+}
+
 const chunks = join(dist, "chunks");
 const chunkFiles = existsSync(chunks)
   ? readdirSync(chunks).filter((file) => file.endsWith(".js"))

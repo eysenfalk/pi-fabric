@@ -13,8 +13,13 @@ const fixture = async () => {
   roots.push(root);
   const cwd = path.join(root, "project");
   const agentDir = path.join(root, "agent");
-  await Promise.all([mkdir(cwd, { recursive: true }), mkdir(agentDir, { recursive: true })]);
-  return { root, cwd, agentDir, projectTrusted: true };
+  const builtinRoot = path.join(root, "builtin");
+  await Promise.all([
+    mkdir(cwd, { recursive: true }),
+    mkdir(agentDir, { recursive: true }),
+    mkdir(builtinRoot, { recursive: true }),
+  ]);
+  return { root, cwd, agentDir, builtinRoot, projectTrusted: true };
 };
 
 const addProgram = async (
@@ -112,6 +117,59 @@ describe("reusable Fabric programs", () => {
       "typescript",
       context,
     )).resolves.toMatchObject({ payloads: { toString: "ok" } });
+  });
+
+  it("resolves the shipped built-in implement Program from the package root", async () => {
+    const { builtinRoot: _fixtureRoot, ...context } = await fixture();
+    const program = await resolveFabricProgram(
+      "builtin/implement",
+      { task: "Add a probe" },
+      "typescript",
+      { ...context, projectTrusted: false, managedHost: true },
+    );
+
+    expect(program).toMatchObject({
+      name: "builtin/implement",
+      scope: "builtin",
+      payloads: {
+        task: "Add a probe",
+        constraints: "",
+        sessionContext: "",
+        skillCatalog: "[]",
+      },
+    });
+    expect(program.code).toContain("function workflowMarkdown");
+    expect(program.code).toContain("plan.reviewRequired ? \"TD\" : \"LR\"");
+  });
+
+  it("resolves and discovers package-owned programs, including in managed hosts", async () => {
+    const context = await fixture();
+    await addProgram(context.builtinRoot, "implement", {
+      version: 1,
+      description: "Implement one bounded change",
+      kernel: "typescript",
+      source: "implement.ts",
+      parameters: { task: { type: "string", required: true } },
+    });
+
+    await expect(resolveFabricProgram(
+      "builtin/implement",
+      { task: "Add a probe" },
+      "typescript",
+      { ...context, projectTrusted: false, managedHost: true },
+    )).resolves.toMatchObject({
+      name: "builtin/implement",
+      scope: "builtin",
+      payloads: { task: "Add a probe" },
+    });
+    await expect(discoverFabricPrograms({
+      ...context,
+      projectTrusted: false,
+      managedHost: true,
+    })).resolves.toMatchObject({
+      programs: [expect.objectContaining({ name: "builtin/implement" })],
+      errors: [],
+    });
   });
 
   it("requires explicit scope and project trust while keeping global programs available", async () => {

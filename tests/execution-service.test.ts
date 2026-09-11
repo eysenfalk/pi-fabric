@@ -742,6 +742,58 @@ return "unreachable";
     expect(capped.success).toBe(true);
   });
 
+  it("pauses the active deadline for human interactions without resetting it", async () => {
+    const registry = new ActionRegistry();
+    const descriptor = {
+      name: "request",
+      description: "slow human interaction stub",
+      inputSchema: { type: "object", properties: {}, additionalProperties: true },
+      risk: "read" as const,
+    };
+    registry.register({
+      name: "interactions",
+      description: "fake interactions",
+      async list() { return [descriptor]; },
+      async describe(name) { return name === "request" ? descriptor : undefined; },
+      async invoke() {
+        await new Promise((resolve) => setTimeout(resolve, 180));
+        return { status: "answered", value: "ok" };
+      },
+    });
+    const config = structuredClone(DEFAULT_FABRIC_CONFIG);
+    config.approvals.read = "allow";
+    config.executor.timeoutMs = 100;
+    config.executor.maxTimeoutMs = 250;
+    const service = new FabricExecutionService(registry, config);
+    const context = { cwd: process.cwd(), hasUI: true, mode: "tui" } as ExtensionContext;
+
+    const result = await service.execute({
+      code: 'await interactions.request({}); await interactions.request({}); return "ok";',
+      signal: undefined,
+      parentToolCallId: "interaction-deadline-pause",
+      context,
+      onPartial() {},
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.value).toBe("ok");
+
+    const remainingBudget = await service.execute({
+      code: `
+await new Promise((resolve) => setTimeout(resolve, 60));
+await interactions.request({});
+await new Promise((resolve) => setTimeout(resolve, 60));
+return "unreachable";
+`,
+      signal: undefined,
+      parentToolCallId: "interaction-deadline-resume",
+      context,
+      onPartial() {},
+    });
+    expect(remainingBudget.success).toBe(false);
+    expect(remainingBudget.error).toContain("timed out");
+  });
+
   it("raises the deadline for a configured exact host-call ref", async () => {
     const registry = new ActionRegistry();
     const descriptor = {

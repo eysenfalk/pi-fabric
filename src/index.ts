@@ -12,6 +12,7 @@ import { registerFabricActorHostEventObservers } from "./actors/host-event-obser
 import { CapturedToolCatalog } from "./capture/catalog.js";
 import { installRegisteredToolCapture } from "./capture/interceptor.js";
 import { registerFabricCommand } from "./commands/fabric.js";
+import { registerImplementCommand } from "./commands/implement.js";
 import { resolveAgentDir } from "./core/agent-dir.js";
 import {
   comparableCompiledSurfaceScore,
@@ -80,6 +81,7 @@ import {
 import { buildSkillReferenceGuidance } from "./core/skill-references.js";
 import { createFabricExecTool } from "./fabric-exec-tool.js";
 import { FabricState } from "./fabric-state.js";
+import { loadBuiltinProgramSkills } from "./programs/builtin-skills.js";
 import { classifyToolResult } from "./repairs/classify.js";
 import { getActiveRepairCompiler } from "./repairs/active.js";
 import { piHostCompatibilityWarning } from "./host-compatibility.js";
@@ -170,6 +172,8 @@ export default async function piFabric(pi: ExtensionAPI, options: { managedHost?
   const capturedTools = new CapturedToolCatalog();
   const proxyContract = new ProxyContractLedger();
   const state = new FabricState(pi, capturedTools, { paths: FABRIC_RUNTIME_PATHS, ...(options.managedHost ? {managedHost: options.managedHost} : {}) });
+  const builtinProgramSkills = loadBuiltinProgramSkills();
+  state.setBuiltinSkills(builtinProgramSkills);
   const directToolApproval = new FabricDirectToolApproval(
     pi,
     () => state.config,
@@ -888,6 +892,7 @@ export default async function piFabric(pi: ExtensionAPI, options: { managedHost?
     reassertToolOwnership();
   });
 
+  let implementInvocation = 0;
   registerFabricCommand(pi, {
     state,
     fabricUi,
@@ -896,6 +901,22 @@ export default async function piFabric(pi: ExtensionAPI, options: { managedHost?
     suspendToolCapture,
     refreshCodePreviewSettings,
     refreshToolDisplay: () => toolDisplay.refresh(),
+  });
+
+  registerImplementCommand(pi, {
+    state,
+    execute: (args, signal, onUpdate, context) => {
+      const execute = fabricTool.execute;
+      if (!execute) throw new Error("fabric_exec is unavailable");
+      implementInvocation += 1;
+      return execute(
+        `implement-command-${implementInvocation}`,
+        args,
+        signal,
+        onUpdate,
+        context,
+      );
+    },
   });
 }
 

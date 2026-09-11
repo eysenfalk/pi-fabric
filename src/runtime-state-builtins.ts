@@ -13,6 +13,7 @@ import { McpProvider } from "./providers/mcp-provider.js";
 import { MemoryProvider, type MemoryProviderContext } from "./providers/memory-provider.js";
 import { MeshProvider } from "./providers/mesh-provider.js";
 import { PiToolsProvider } from "./providers/pi-tools-provider.js";
+import { InteractionsProvider } from "./providers/interactions-provider.js";
 import { StateProvider } from "./providers/state-provider.js";
 
 import type { FabricManagedHost } from "./managed-host.js";
@@ -90,6 +91,11 @@ export class RuntimeStateBuiltins {
         create: () => capturedToolsProvider,
       }));
     }
+    await this.install(createProviderComponent({
+      provider: "interactions",
+      description: "Bounded human input through Pi host UI",
+      create: () => new InteractionsProvider(),
+    }));
   }
 
   async mesh(config: FabricConfig, mesh: MeshStore, identity: MeshIdentity, participants: ParticipantDirectory): Promise<void> {
@@ -152,6 +158,7 @@ export class RuntimeStateBuiltins {
       ...(config.fullCodeMode || config.schema.mode === "enforce" ? ["pi"] : []),
       ...(config.fullCodeMode && config.capture.enabled && config.schema.mode !== "enforce" ? ["extensions"] : []),
       "mcp",
+      "interactions",
       ...(config.mesh.enabled ? ["mesh", "state"] : ["mesh", "state"].filter((name) => this.managedHost?.has(name))),
       "schema",
       "compact",

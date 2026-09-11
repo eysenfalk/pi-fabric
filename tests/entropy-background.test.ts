@@ -65,7 +65,7 @@ afterEach(() => {
 
 const createHarness = () => {
   const handlers = new Map<string, ExtensionHandler[]>();
-  let command: ((args: string, context: ExtensionContext) => Promise<void>) | undefined;
+  const commands = new Map<string, (args: string, context: ExtensionContext) => Promise<void>>();
   const pi = {
     events: { emit: vi.fn(), on: vi.fn(() => () => {}) },
     getActiveTools: vi.fn(() => []),
@@ -75,14 +75,16 @@ const createHarness = () => {
       values.push(handler);
       handlers.set(event, values);
     }),
-    registerCommand: vi.fn((_name: string, definition: { handler: typeof command }) => {
-      command = definition.handler;
+    registerCommand: vi.fn((name: string, definition: {
+      handler: (args: string, context: ExtensionContext) => Promise<void>;
+    }) => {
+      commands.set(name, definition.handler);
     }),
     registerMessageRenderer: vi.fn(),
     registerTool: vi.fn(),
     setActiveTools: vi.fn(),
   } as unknown as ExtensionAPI;
-  return { pi, handlers, command: () => command! };
+  return { pi, handlers, command: (name: string) => commands.get(name)! };
 };
 
 const emit = async (
@@ -109,7 +111,7 @@ describe("entropy background scheduler", () => {
       ui: { setStatus: vi.fn(), notify: vi.fn() },
       sessionManager: { getBranch: () => [], getSessionId: () => "background-session" },
     } as unknown as ExtensionContext;
-    await harness.command()("repairs", context);
+    await harness.command("fabric")("repairs", context);
 
     const trigger = async (): Promise<void> => {
       await emit(

@@ -1241,6 +1241,28 @@ interface FabricWorkflowAgentOptions extends Omit<FabricAgentRequest, "task"> {
 }
 type FabricActivityStatus = "pending" | "running" | "completed" | "failed" | "blocked" | "stopped";
 type FabricActivityKind = "agent" | "actor" | "tool" | "extension" | "mcp" | "mesh" | "task" | "custom";
+interface FabricInteractionChoice {
+  id: string;
+  label: string;
+  description?: string;
+}
+interface FabricInteractionRequest {
+  kind: "input" | "select";
+  title: string;
+  prompt?: string;
+  markdown?: string;
+  placeholder?: string;
+  initial?: string;
+  multiline?: boolean;
+  choices?: FabricInteractionChoice[];
+}
+interface FabricInteractionResult {
+  status: "answered" | "cancelled";
+  value?: string;
+}
+interface FabricInteractionsApi {
+  request(args: FabricInteractionRequest): Promise<FabricInteractionResult>;
+}
 interface FabricWorkflowDisplay {
   name?: string;
   description?: string;
@@ -1281,6 +1303,7 @@ interface FabricWorkflowApi {
 declare const tools: FabricToolsApi;
 declare const pi: PiToolsApi;
 declare const extensions: FabricExtensionsApi;
+declare const interactions: FabricInteractionsApi;
 declare const agents: FabricAgentsApi;
 declare const mesh: FabricMeshApi;
 declare const mcp: FabricMcpApi;

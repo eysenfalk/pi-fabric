@@ -26,6 +26,11 @@ export interface FabricSandboxOptions {
     ref: string,
     args: Record<string, unknown>,
   ): number | undefined;
+  /** True only for trusted host calls that wait on a human and consume no execution time. */
+  suspendsTimeoutForHostCall?(
+    ref: string,
+    args: Record<string, unknown>,
+  ): boolean;
   /** Declared core override fields must not be consumed as built-in aliases. */
   piToolCanonicalFields?: Record<string, string[]>;
   transpiledCode?: string;

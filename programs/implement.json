@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "description": "Implement one bounded repository change through an approved, visual workflow.",
+  "kernel": "typescript",
+  "source": "implement.ts",
+  "parameters": {
+    "task": {
+      "type": "string",
+      "description": "Observable outcome requested by the user.",
+      "required": true
+    },
+    "constraints": {
+      "type": "string",
+      "description": "Optional authority, scope, quality, or delivery constraints.",
+      "default": ""
+    },
+    "sessionContext": {
+      "type": "string",
+      "description": "Bounded recent conversation context supplied by the host command.",
+      "default": ""
+    },
+    "skillCatalog": {
+      "type": "string",
+      "description": "JSON array of active Skill names and descriptions supplied by the host command.",
+      "default": "[]"
+    }
+  }
+}

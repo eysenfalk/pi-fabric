@@ -34,7 +34,8 @@ export const executeFile = (
 
 export const commandAvailable = async (command: string): Promise<boolean> => {
   try {
-    await executeFile("sh", ["-lc", `command -v ${shellQuote(command)}`], { timeoutMs: 2_000 });
+    // A login shell may replace the caller's PATH and hide an otherwise available runtime.
+    await executeFile("sh", ["-c", `command -v ${shellQuote(command)}`], { timeoutMs: 2_000 });
     return true;
   } catch {
     return false;

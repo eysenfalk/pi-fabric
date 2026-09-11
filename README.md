@@ -59,7 +59,7 @@ return {
 
 Independent calls run in parallel, and the returned object enters the model context. Known providers support concise direct calls such as `mcp.fal_ai.get_model_schema(...)`, `memory.recall(...)`, `state.get()`, `schema.status()`, and `compact.status()`. Refs found or computed at runtime use `tools.call({ ref, args })` (TypeScript notation). Python uses `await tools.call({"ref": ref, "args": args})`, native dictionary results, and `asyncio.gather` for independent calls.
 
-When the control flow is already proven, store it as a [reusable Fabric program](docs/programs.md) and invoke it by scope-qualified name to avoid regenerating the orchestration. `fabric_exec` accepts exactly one source: inline `code` or `program: "project/review"`, then applies the same runtime, capabilities, approvals, cancellation, and budgets. `/fabric programs` lists available global and trusted-project programs.
+When the control flow is already proven, store it as a [reusable Fabric program](docs/programs.md) and invoke it by scope-qualified name to avoid regenerating the orchestration. `fabric_exec` accepts exactly one source: inline `code` or `program: "project/review"`, then applies the same runtime, capabilities, approvals, cancellation, and budgets. `/fabric programs` lists built-in, global, and trusted-project programs. The TUI-first `/implement` prototype collects a task and optional constraints, previews a Mermaid workflow for approval, then runs the packaged `builtin/implement` Program through that same path.
 
 To select Python, put this in `~/.pi/agent/fabric.json` or a trusted project's `.pi/fabric.json`, or use `/fabric settings` → **Executor** → **Kernel**:
 
@@ -131,6 +131,7 @@ Press **ctrl+shift+a** or run **`/fabric chat <agent-id-or-name>`** to open a li
 Fabric includes a live activity surface in Pi:
 
 - A compact widget above the chat (like `pi-supervisor`) whose header follows the current phase while its rows show active/completed agents, active actors, and their recent nested tool or code-change activity.
+- `/implement`: asks for one bounded change, renders its proposed workflow as Markdown and terminal Mermaid art, and starts the packaged Program only after approval.
 - `/fabric` (or `/fabric dashboard`): opens the **Activity** and **Topology** views. The user-facing Pi session appears as **Main**. You can queue or steer participants and inspect the project topology.
 - `/fabric settings`: mirrors Pi's `/settings` and writes changes to `fabric.json`. TUI hosts get the searchable settings component; RPC hosts get the same nested sections, value/input/model pickers, list editors, and project/global save scopes through native dialog primitives.
 - `Tool display` (`compact` by default, or `full`) is configured under `/fabric settings` → **UI**; compact elevates the declared display intent, hides the outer program, and applies to the current transcript immediately. Pi's tool-expand keybinding (`ctrl+o` by default) expands a compact card to the full transcript.
@@ -161,20 +162,19 @@ See the [interface & commands reference](docs/interface.md) for every view, keyb
 ## Development
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
+bun install
+bun run check:fast
+bun run check
 ```
 
-The test suite covers:
+Validation is staged so routine development stays fast without skipping the changed user path:
 
-- configuration and schema validation
-- provider dispatch, registered-tool execution, QuickJS isolation, and Pi built-in calls
-- agent fixtures for Claude and Veda
-- workflows, durable mesh state, actor mailboxes, subscriptions, and actor restoration
+- `check:fast` runs typechecking and tests related to uncommitted changes.
+- `check` runs typechecking, a fresh distributable build, the complete deterministic suite, lazy-graph assertions, and dead-code lint.
+- `test:e2e` drives built `dist/` through real Pi and Agent TTY sessions against local scripted models. It uses no model credentials or paid requests; local runs require `agent-tty@0.5.0` on `PATH`.
+- Nightly CI runs the deterministic repository gate plus the complete model-free E2E suite and uploads reviewable terminal evidence. Live-model probes remain local or manual.
 
-Claude and Veda fixtures use local test processes with zero billable requests.
+The deterministic suite covers configuration, provider dispatch, runtime isolation, Pi built-in calls, agent transports, workflows, durable mesh state, and actor restoration. Claude and Veda fixtures also use local test processes with zero billable requests.
 
 ## Acknowledgments
 

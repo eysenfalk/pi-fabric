@@ -143,6 +143,19 @@ describe.skipIf(!hasPython)("CPythonRuntime", () => {
     expect(result).toMatchObject({ terminationReason: "completed", value: "done" });
   });
 
+  it("pauses the active deadline while awaiting a human interaction", async () => {
+    const result = await run(
+      'return await tools.call(ref="interactions.request", args={})',
+      async () => new Promise((resolve) => setTimeout(() => resolve("answered"), 1100)),
+      {
+        timeoutMs: 1000,
+        suspendsTimeoutForHostCall: (ref, args) =>
+          ref === "fabric.$call" && args.ref === "interactions.request",
+      },
+    );
+    expect(result).toMatchObject({ terminationReason: "completed", value: "answered" });
+  });
+
   it("kills synchronous infinite loops and preserves pre-timeout logs", async () => {
     // The wall deadline includes interpreter startup. Leave room for a cold
     // process on busy CI before checking log preservation during termination.

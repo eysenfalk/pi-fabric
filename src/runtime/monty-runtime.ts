@@ -4,6 +4,7 @@ import { runAbortable, settleWithin } from "../async-settlement.js";
 import { MAX_EXECUTOR_TIMEOUT_MS } from "../config.js";
 import { piBashExitMetadata } from "../core/pi-bash-error.js";
 import { isPiShellRef } from "../core/pi-tools.js";
+import { ActiveExecutionDeadline, HostCallDeadlineTracker } from "./active-execution-deadline.js";
 import type { FabricHostCall, FabricKernelRuntime, FabricSandboxOptions, FabricSandboxResult } from "./kernel.js";
 import { montyBindings } from "./monty-bridge.js";
 import { MONTY_BOOTSTRAP_SOURCE, montyErrorText, prepareMontySource } from "./monty-source.js";
@@ -44,9 +45,6 @@ export class MontyRuntime implements FabricKernelRuntime {
       prepared = prepareMontySource(code, strings);
     } catch (error) { return failure("runtime_error", montyErrorText(error)); }
 
-    const startedAt = Date.now();
-    let deadlineAt = startedAt + options.timeoutMs;
-    let timer: NodeJS.Timeout | undefined;
     let pool: MontyNative.Monty | undefined;
     let session: MontyNative.MontySession | undefined;
     let workerPid: number | undefined;
@@ -86,14 +84,8 @@ export class MontyRuntime implements FabricKernelRuntime {
       kill();
     };
     const abort = (): void => stop("aborted");
-    const scheduleDeadline = (): void => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (Date.now() < deadlineAt) scheduleDeadline();
-        else stop("timed_out");
-      }, Math.min(2_147_483_647, Math.max(0, deadlineAt - Date.now())));
-    };
-    scheduleDeadline();
+    const deadline = new ActiveExecutionDeadline(options.timeoutMs, () => stop("timed_out"));
+    const hostCallDeadlines = new HostCallDeadlineTracker(deadline);
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted) abort();
     let result: FabricSandboxResult;
@@ -104,7 +96,7 @@ export class MontyRuntime implements FabricKernelRuntime {
           binaryPath, minProcesses: 0, maxProcesses: 1, maxCheckoutsPerWorker: 1,
           // A fixed VM/per-turn limit would defeat a longer host-call floor. In that
           // mode the reschedulable host watchdog hard-kills the captured native PID.
-          ...(options.minimumTimeoutMsForHostCall ? {
+          ...(options.minimumTimeoutMsForHostCall || options.suspendsTimeoutForHostCall ? {
             durationLimitGrace: null, requestTimeout: MAX_EXECUTOR_TIMEOUT_MS / 1000 + 1,
           } : {
             requestTimeout: options.timeoutMs / 1000 + 1, durationLimitGrace: 1,
@@ -118,7 +110,9 @@ export class MontyRuntime implements FabricKernelRuntime {
         const checkedOut = await ownedPool.checkout({
           scriptName: "fabric-exec.py", printFlushInterval: 0,
           limits: { maxMemory: options.memoryLimitBytes, maxRecursionDepth: 500, maxSuspensions: 10_000,
-            ...(!options.minimumTimeoutMsForHostCall ? { maxDurationSecs: options.timeoutMs / 1000 } : {}),
+            ...(!options.minimumTimeoutMsForHostCall && !options.suspendsTimeoutForHostCall
+              ? { maxDurationSecs: options.timeoutMs / 1000 }
+              : {}),
           },
         });
         if (hostAbort.signal.aborted) { await checkedOut.close(); throw hostAbort.signal.reason; }
@@ -135,11 +129,10 @@ export class MontyRuntime implements FabricKernelRuntime {
         }
         const settle = isPiShellRef(ref) && args.settle === true;
         if (isPiShellRef(ref)) delete args.settle;
-        const floor = options.minimumTimeoutMsForHostCall?.(ref, args);
-        if (typeof floor === "number" && Number.isFinite(floor) && Date.now() + floor > deadlineAt) {
-          deadlineAt = Date.now() + Math.max(1, Math.floor(floor));
-          scheduleDeadline();
-        }
+        deadline.extendMinimum(options.minimumTimeoutMsForHostCall?.(ref, args));
+        const endHostCall = hostCallDeadlines.begin(
+          options.suspendsTimeoutForHostCall?.(ref, args) === true,
+        );
         const task = runAbortable(hostAbort.signal, () => hostCall(ref, args, hostAbort.signal));
         tasks.add(task);
         try { return montyInput(normalizeMontyValue(await task, true)); }
@@ -147,7 +140,7 @@ export class MontyRuntime implements FabricKernelRuntime {
           const exit = settle ? piBashExitMetadata(error) : undefined;
           if (exit) return montyInput({ ok: false, ...exit, details: null, error: montyErrorText(error) });
           throw error;
-        } finally { tasks.delete(task); }
+        } finally { endHostCall(); tasks.delete(task); }
       };
       class PayloadValues {}
       const attributes = new PayloadValues();
@@ -166,9 +159,9 @@ export class MontyRuntime implements FabricKernelRuntime {
       const vmTimeout = nativeError?.exception?.typeName === "TimeoutError" && nativeError.exception.message.startsWith("time limit exceeded:");
       const reason = stopped ?? (nativeError?.timedOut || vmTimeout ? "timed_out" : "runtime_error");
       result = { value: undefined, logs, terminationReason: reason,
-        error: reason === "aborted" ? "Execution cancelled" : reason === "timed_out" ? `Execution timed out after ${deadlineAt - startedAt}ms` : montyErrorText(error, prepared) };
+        error: reason === "aborted" ? "Execution cancelled" : reason === "timed_out" ? `Execution timed out after ${deadline.timeoutMs}ms` : montyErrorText(error, prepared) };
     } finally {
-      if (timer) clearTimeout(timer);
+      deadline.dispose();
       options.signal?.removeEventListener("abort", abort);
       hostAbort.abort(new Error("Monty execution ended"));
       // Initiate pool closure first to prevent worker replacement. Native cleanup

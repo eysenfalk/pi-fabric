@@ -187,6 +187,21 @@ await Promise.all([
     expect(Date.now() - startedAt).toBeLessThan(2_000);
   });
 
+  it("pauses the active deadline while awaiting a human interaction", async () => {
+    const result = await new NodeProcessRuntime().execute(
+      'return tools.call({ ref: "interactions.request", args: {} });',
+      async () => new Promise((resolve) => setTimeout(() => resolve("answered"), 750)),
+      {
+        ...options,
+        timeoutMs: 500,
+        suspendsTimeoutForHostCall: (ref, args) =>
+          ref === "interactions.request"
+          || (ref === "fabric.$call" && args.ref === "interactions.request"),
+      },
+    );
+    expect(result).toMatchObject({ terminationReason: "completed", value: "answered" });
+  });
+
   it("forcibly terminates synchronous infinite loops", async () => {
     const result = await new NodeProcessRuntime().execute(
       "while (true) {}",

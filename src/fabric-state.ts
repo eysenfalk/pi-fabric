@@ -70,6 +70,7 @@ export class FabricState {
   #config: FabricConfig | undefined;
   #kernelReloadRequired = false;
   #hostSkills: readonly Skill[] = [];
+  #builtinSkills: readonly Skill[] = [];
 
   #cwd: string | undefined;
   #generation = 0;
@@ -127,6 +128,20 @@ export class FabricState {
   /** Snapshot Pi's active, already-resolved Skill catalog for child invocations. */
   setHostSkills(skills: readonly Skill[]): void {
     this.#hostSkills = [...skills];
+  }
+
+  /** Install immutable package Skills reserved for exact built-in Program binding. */
+  setBuiltinSkills(skills: readonly Skill[]): void {
+    this.#builtinSkills = [...skills];
+  }
+
+  #allSkills(): readonly Skill[] {
+    return [...this.#hostSkills, ...this.#builtinSkills];
+  }
+
+  /** Names and descriptions are sufficient for semantic Program routing. */
+  hostSkillCatalog(): Array<{ name: string; description: string }> {
+    return this.#allSkills().map(({ name, description }) => ({ name, description }));
   }
 
   get widgetDismissedAt(): number {
@@ -508,7 +523,7 @@ export class FabricState {
         prewalk: this.prewalk,
         prewalkDrift: this.prewalkDrift,
         sessionApprovals: this.sessionApprovals,
-        hostSkills: () => this.#hostSkills,
+        hostSkills: () => this.#allSkills(),
         ...(this.#options.paths ? { paths: this.#options.paths } : {}),
       },
     );

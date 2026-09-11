@@ -433,6 +433,14 @@ export class FabricExecutionService {
           : 0;
       return Math.max(orchestrationTimeoutMs, requestedTimeoutMs);
     };
+    const suspendsTimeoutForHostCall = (
+      ref: string,
+      args: Record<string, unknown>,
+    ): boolean => {
+      const targetRef =
+        ref === "fabric.$call" && typeof args.ref === "string" ? args.ref : ref;
+      return targetRef === "interactions.request";
+    };
     const traceAttempt = async <T>(
       ref: string,
       args: Record<string, unknown>,
@@ -759,6 +767,7 @@ export class FabricExecutionService {
           memoryLimitBytes: this.config.executor.memoryLimitBytes,
           maxLogChars: this.config.executor.maxOutputChars,
           minimumTimeoutMsForHostCall,
+          suspendsTimeoutForHostCall,
           ...(!python ? { piToolCanonicalFields } : {}),
           ...(checked.javascript ? { transpiledCode: checked.javascript } : {}),
           ...(checked.sourceMap ? { transpiledSourceMap: checked.sourceMap } : {}),
